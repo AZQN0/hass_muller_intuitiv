@@ -131,7 +131,7 @@ name: FPN Thermostat 7131
 
 ### Debug Logging
 
-To enable debug logging, add this to your `configuration.yaml`:
+To enable comprehensive debug logging, add this to your `configuration.yaml`:
 
 ```yaml
 logger:
@@ -139,6 +139,35 @@ logger:
   logs:
     custom_components.muller_intuitiv: debug
 ```
+
+After restarting Home Assistant, the logs will show detailed information including:
+
+#### Device Discovery & Mapping
+- **Home structure analysis**: Lists all rooms and their associated devices/modules
+- **Device-to-room mapping**: Shows how physical devices are mapped to logical rooms
+- **Entity creation**: Logs when climate entities are initialized with their device/room IDs
+
+#### API Operations
+- **Authentication flow**: Token requests, refresh attempts, and expiration handling
+- **Data fetching**: Home structure and device status API calls with response summaries
+- **Control commands**: Temperature and mode changes with request/response details
+
+#### Error Diagnosis
+- **Mapping failures**: When devices can't be mapped to rooms (with available device lists)
+- **API errors**: Detailed error responses with context
+- **Room ID mismatches**: Helps diagnose the "room does not belong to home" error
+
+#### Example Log Output
+```
+INFO [custom_components.muller_intuitiv.coordinator] Starting data update for home 123456789
+INFO [custom_components.muller_intuitiv.coordinator] Home data received: 2 rooms found
+INFO [custom_components.muller_intuitiv.coordinator] Mapped device 2483305402 to room 987654321 (Living Room)
+INFO [custom_components.muller_intuitiv.coordinator] Device status received: 2 devices found
+INFO [custom_components.muller_intuitiv.coordinator] Mapping summary: 2 successful, 0 failed out of 2 total devices
+INFO [custom_components.muller_intuitiv.climate] Climate entity FPN Thermostat 5402 requesting temperature change to 21.0°C (device_id=2483305402, room_id=987654321)
+```
+
+This detailed logging helps troubleshoot device discovery, room mapping, and control operation issues.
 
 ## API Rate Limits
 

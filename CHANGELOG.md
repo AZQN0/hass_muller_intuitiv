@@ -22,7 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated climate entity to use room_id from device data for API calls
 - Fixed diagnostics.py Python 3.9+ type hints and unsafe session access
 - Added room_id to entity attributes for debugging
-- Comprehensive logging for device-to-room mapping process
+- **Significantly enhanced logging throughout the integration**
+  - Comprehensive device discovery and mapping logs
+  - Detailed API operation tracking (auth, data fetch, control commands)
+  - Error diagnosis with context for troubleshooting
+  - Request/response logging for API calls
+  - Entity initialization and control operation logs
 
 ### Impact
 - Temperature setting operations will now work without API errors

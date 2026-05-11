@@ -173,19 +173,34 @@ class MullerIntuitivApi:
 
     async def get_homes_data(self) -> Dict[str, Any]:
         """Fetch home data including IDs, modes, and schedules."""
+        _LOGGER.debug("Fetching homes data from /api/homesdata")
         res = await self._post("/api/homesdata")
+
         homes = res.get("body", {}).get("homes", [])
         if not homes:
+            _LOGGER.error("No homes found in account response: %s", res)
             raise MullerIntuitivApiError("No homes found in account")
-        return homes[0]
+
+        home_data = homes[0]
+        _LOGGER.debug("Home data fetched successfully: ID=%s, Name=%s, Rooms=%d",
+                     home_data.get("id"), home_data.get("name", "Unknown"),
+                     len(home_data.get("rooms", [])))
+        return home_data
 
     async def get_home_status(self, home_id: str) -> List[Dict[str, Any]]:
         """Fetch status of all rooms in the home."""
+        _LOGGER.debug("Fetching home status for home_id: %s", home_id)
         res = await self._post("/syncapi/v1/homestatus", json_data={"home_id": home_id})
-        return res.get("body", {}).get("home", {}).get("rooms", [])
+
+        rooms = res.get("body", {}).get("home", {}).get("rooms", [])
+        _LOGGER.debug("Home status fetched successfully: %d devices found", len(rooms))
+
+        return rooms
 
     async def set_room_mode(self, home_id: str, room_id: str, mode: str) -> None:
         """Set the mode for a specific room. (home, hg)."""
+        _LOGGER.info("Setting room mode: home_id=%s, room_id=%s, mode=%s", home_id, room_id, mode)
+
         payload = {
             "home": {
                 "id": home_id,
@@ -200,13 +215,19 @@ class MullerIntuitivApi:
         # Based on Jeedom plugin, "home" mode disables boost
         if mode == "home":
             payload["home"]["rooms"][0]["boost"] = False
-            
+            _LOGGER.debug("Mode 'home' selected, disabling boost")
+
+        _LOGGER.debug("Sending setstate payload: %s", payload)
         await self._post("/syncapi/v1/setstate", json_data=payload)
+        _LOGGER.info("Successfully set room %s to mode %s", room_id, mode)
 
     async def set_room_temperature(self, home_id: str, room_id: str, temperature: float, default_duration_mins: int = DEFAULT_MANUAL_DURATION) -> None:
         """Set a manual temperature override for a room."""
         end_time = int(time.time()) + (default_duration_mins * 60)
-        
+
+        _LOGGER.info("Setting room temperature: home_id=%s, room_id=%s, temp=%.1f°C, duration=%d mins",
+                    home_id, room_id, temperature, default_duration_mins)
+
         payload = {
             "home": {
                 "id": home_id,
@@ -220,7 +241,10 @@ class MullerIntuitivApi:
                 ]
             }
         }
+
+        _LOGGER.debug("Sending setstate payload: %s", payload)
         await self._post("/syncapi/v1/setstate", json_data=payload)
+        _LOGGER.info("Successfully set room %s temperature to %.1f°C", room_id, temperature)
 
     async def set_home_mode(self, home_id: str, mode: str) -> None:
         """Set the mode for the entire home (schedule, hg, away)."""

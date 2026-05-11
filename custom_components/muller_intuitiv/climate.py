@@ -65,6 +65,10 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         # Get device info
         device_data = coordinator.data.get(device_id, {})
         muller_type = device_data.get("muller_type", "Unknown")
+        room_id = device_data.get("room_id")
+
+        _LOGGER.info("Initializing climate entity for device %s (type: %s, room_id: %s)",
+                    device_id, muller_type, room_id)
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"device_{device_id}")},
@@ -131,40 +135,67 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         """Set new target temperature."""
         temperature = kwargs.get("temperature")
         if temperature is None:
+            _LOGGER.warning("Temperature not provided in kwargs: %s", kwargs)
             return
 
         # Get the room_id from the device data (mapped in coordinator)
         room_id = self._device_data.get("room_id")
         if not room_id:
-            _LOGGER.error("No room_id found for device %s", self.device_id)
+            _LOGGER.error("No room_id found for device %s. Device data: %s", self.device_id, self._device_data)
             return
 
-        await self.coordinator.api.set_room_temperature(
-            self.home_id, room_id, temperature
-        )
+        _LOGGER.info("Climate entity %s requesting temperature change to %.1f°C (device_id=%s, room_id=%s)",
+                    self.name, temperature, self.device_id, room_id)
+
+        try:
+            await self.coordinator.api.set_room_temperature(
+                self.home_id, room_id, temperature
+            )
+            _LOGGER.info("Temperature change request completed for %s", self.name)
+        except Exception as err:
+            _LOGGER.error("Failed to set temperature for %s: %s", self.name, err)
+            raise
+
         await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
         muller_mode = HA_TO_MULLER_PRESET.get(preset_mode)
 
+        if not muller_mode:
+            _LOGGER.error("Unknown preset mode '%s' for entity %s", preset_mode, self.name)
+            return
+
         # Get the room_id from the device data (mapped in coordinator)
         room_id = self._device_data.get("room_id")
         if not room_id:
-            _LOGGER.error("No room_id found for device %s", self.device_id)
+            _LOGGER.error("No room_id found for device %s. Device data: %s", self.device_id, self._device_data)
             return
 
-        if muller_mode == "home":
-            await self.coordinator.api.set_room_mode(self.home_id, room_id, "home")
-        elif muller_mode == "hg":
-            await self.coordinator.api.set_room_mode(self.home_id, room_id, "hg")
-        elif muller_mode == "manual":
-            # Just set the current temperature to stay in manual mode
-            current_target = self.target_temperature
-            if current_target is not None:
-                await self.coordinator.api.set_room_temperature(
-                    self.home_id, room_id, current_target
-                )
+        _LOGGER.info("Climate entity %s requesting preset mode change to '%s' -> '%s' (device_id=%s, room_id=%s)",
+                    self.name, preset_mode, muller_mode, self.device_id, room_id)
+
+        try:
+            if muller_mode == "home":
+                await self.coordinator.api.set_room_mode(self.home_id, room_id, "home")
+            elif muller_mode == "hg":
+                await self.coordinator.api.set_room_mode(self.home_id, room_id, "hg")
+            elif muller_mode == "manual":
+                # Just set the current temperature to stay in manual mode
+                current_target = self.target_temperature
+                if current_target is not None:
+                    _LOGGER.debug("Setting manual mode by maintaining current temperature %.1f°C", current_target)
+                    await self.coordinator.api.set_room_temperature(
+                        self.home_id, room_id, current_target
+                    )
+                else:
+                    _LOGGER.warning("Cannot set manual mode for %s: no current target temperature", self.name)
+                    return
+
+            _LOGGER.info("Preset mode change completed for %s", self.name)
+        except Exception as err:
+            _LOGGER.error("Failed to set preset mode for %s: %s", self.name, err)
+            raise
 
         await self.coordinator.async_request_refresh()
 
