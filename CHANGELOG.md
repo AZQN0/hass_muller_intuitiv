@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-05-11
+
+### Fixed
+- Fixed syntax error in api.py import statement (literal \n characters)
+- Fixed Python compatibility issues with modern type hints (dict[str, type] → Dict[str, type])
+- Fixed Union type hints to use Optional for better Python version compatibility
+- Added missing strings.json file for config flow translations
+- Added missing ConfigEntry import in climate.py
+- Fixed potential IndexError in get_homes_data() when no homes are found
+- Resolved "Invalid handler specified" config flow error
+
 ## [0.9.0] - 2026-05-11
 
 ### Added

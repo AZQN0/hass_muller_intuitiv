@@ -2,6 +2,7 @@
 import logging
 from datetime import timedelta
 import time
+from typing import Dict
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -33,7 +34,7 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=DEFAULT_UPDATE_INTERVAL),
         )
 
-    async def _async_update_data(self) -> dict[str, dict]:
+    async def _async_update_data(self) -> Dict[str, dict]:
         """Fetch data from API endpoint."""
         try:
             # Check if token needs refresh based on expiration time

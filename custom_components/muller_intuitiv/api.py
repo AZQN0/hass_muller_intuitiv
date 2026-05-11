@@ -4,7 +4,15 @@ import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-from .const import (\n    API_BASE_URL,\n    CLIENT_ID,\n    CLIENT_SECRET,\n    DEFAULT_MANUAL_DURATION,\n    HTTP_TIMEOUT,\n    SCOPE,\n    USER_PREFIX,\n)
+from .const import (
+    API_BASE_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    DEFAULT_MANUAL_DURATION,
+    HTTP_TIMEOUT,
+    SCOPE,
+    USER_PREFIX,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,7 +123,10 @@ class MullerIntuitivApi:
     async def get_homes_data(self) -> Dict[str, Any]:
         """Fetch home data including IDs, modes, and schedules."""
         res = await self._post("/api/homesdata")
-        return res.get("body", {}).get("homes", [])[0]
+        homes = res.get("body", {}).get("homes", [])
+        if not homes:
+            raise MullerIntuitivApiError("No homes found in account")
+        return homes[0]
 
     async def get_home_status(self, home_id: str) -> List[Dict[str, Any]]:
         """Fetch status of all rooms in the home."""

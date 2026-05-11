@@ -1,6 +1,6 @@
 """Climate platform for Muller Intuitiv."""
 import logging
-from typing import Any
+from typing import Any, Dict, Optional, Union
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -14,6 +14,7 @@ from homeassistant.components.climate.const import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -34,7 +35,7 @@ HA_TO_MULLER_PRESET = {
     PRESET_ECO: "hg",
 }
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities) -> None:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up the Muller Intuitiv climate platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     
@@ -68,7 +69,7 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         )
 
     @property
-    def _room_data(self) -> dict[str, Any]:
+    def _room_data(self) -> Dict[str, Any]:
         """Get the room data from the coordinator."""
         return self.coordinator.data.get(self.room_id, {})
 
@@ -83,12 +84,12 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         return self._room_data.get("name", f"Room {self.room_id}")
 
     @property
-    def current_temperature(self) -> float | None:
+    def current_temperature(self) -> Optional[float]:
         """Return the current temperature."""
         return self._room_data.get("therm_measured_temperature")
 
     @property
-    def target_temperature(self) -> float | None:
+    def target_temperature(self) -> Optional[float]:
         """Return the temperature we try to reach."""
         return self._room_data.get("therm_setpoint_temperature")
 
@@ -101,13 +102,13 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         return HVACMode.HEAT
 
     @property
-    def preset_mode(self) -> str | None:
+    def preset_mode(self) -> Optional[str]:
         """Return current preset mode."""
         mode = self._room_data.get("therm_setpoint_mode")
         return MULLER_TO_HA_PRESET.get(mode, PRESET_NONE)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> Dict[str, Any]:
         """Return extra state attributes."""
         return {
             "open_window": self._room_data.get("open_window", False),
