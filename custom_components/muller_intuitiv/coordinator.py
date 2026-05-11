@@ -70,13 +70,37 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         raise UpdateFailed(f"Token refresh failed: {err}") from err
 
             try:
+                # Get home structure to map devices to room IDs
+                home_data = await self.api.get_homes_data()
+                rooms_from_home = home_data.get("rooms", [])
+
+                # Create device-to-room mapping from home structure
+                device_to_room_map = {}
+                for room in rooms_from_home:
+                    room_id = room.get("id")
+                    modules = room.get("modules", [])
+                    for module in modules:
+                        device_id = module.get("id")
+                        if device_id:
+                            device_to_room_map[device_id] = room_id
+                            _LOGGER.debug("Mapped device %s to room %s", device_id, room_id)
+
                 # Get device status (what API calls "rooms" are actually heating devices)
                 devices_data = await self.api.get_home_status(self.home_id)
 
-                # Process each heating device and create meaningful names
+                # Process each heating device and add room mapping
                 for device in devices_data:
                     device_id = device.get("id")
                     muller_type = device.get("muller_type", "Unknown")
+
+                    # Add the correct room ID for API calls
+                    room_id = device_to_room_map.get(device_id)
+                    if room_id:
+                        device["room_id"] = room_id
+                        _LOGGER.debug("Device %s belongs to room %s", device_id, room_id)
+                    else:
+                        _LOGGER.warning("Could not find room mapping for device %s", device_id)
+                        device["room_id"] = None
 
                     # Create user-friendly names
                     short_id = device_id[-4:] if device_id else "XXXX"
@@ -113,12 +137,36 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     self.api.set_token(new_data["access_token"])
 
                     # Retry fetch with device processing
+                    # Get home structure to map devices to room IDs
+                    home_data = await self.api.get_homes_data()
+                    rooms_from_home = home_data.get("rooms", [])
+
+                    # Create device-to-room mapping from home structure
+                    device_to_room_map = {}
+                    for room in rooms_from_home:
+                        room_id = room.get("id")
+                        modules = room.get("modules", [])
+                        for module in modules:
+                            device_id = module.get("id")
+                            if device_id:
+                                device_to_room_map[device_id] = room_id
+                                _LOGGER.debug("Mapped device %s to room %s", device_id, room_id)
+
                     devices_data = await self.api.get_home_status(self.home_id)
 
-                    # Process each heating device and create meaningful names
+                    # Process each heating device and add room mapping
                     for device in devices_data:
                         device_id = device.get("id")
                         muller_type = device.get("muller_type", "Unknown")
+
+                        # Add the correct room ID for API calls
+                        room_id = device_to_room_map.get(device_id)
+                        if room_id:
+                            device["room_id"] = room_id
+                            _LOGGER.debug("Device %s belongs to room %s", device_id, room_id)
+                        else:
+                            _LOGGER.warning("Could not find room mapping for device %s", device_id)
+                            device["room_id"] = None
 
                         # Create user-friendly names
                         short_id = device_id[-4:] if device_id else "XXXX"
@@ -140,7 +188,7 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     else:
                         _LOGGER.error("Emergency token refresh failed: %s", err)
                         raise UpdateFailed(f"Authentication failed: {err}") from err
-                
+
             return {device["id"]: device for device in devices_data}
 
         except (MullerIntuitivApiError, MullerIntuitivTimeoutError, MullerIntuitivConnectionError) as err:

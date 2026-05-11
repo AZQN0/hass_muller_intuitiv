@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.6] - 2026-05-11
+
+### Fixed
+- **CRITICAL**: Resolved API error 400 "room<ID> does not belong to this home"
+- Fixed device ID vs room ID mismatch in API calls
+- Coordinator now properly maps devices to their correct room IDs using homesdata structure
+- All climate control operations (temperature, preset, HVAC mode) now use correct room IDs
+
+### Technical Changes
+- Added device-to-room mapping in coordinator using home structure data
+- Enhanced coordinator to fetch both homesdata (room IDs) and homestatus (device status)
+- Updated climate entity to use room_id from device data for API calls
+- Added room_id to entity attributes for debugging
+- Comprehensive logging for device-to-room mapping process
+
+### Impact
+- Temperature setting operations will now work without API errors
+- Preset mode changes (home, eco, manual) will function correctly
+- HVAC mode switching will operate as expected
+- Integration will work properly with multi-room heating systems
+
 ## [0.9.5] - 2026-05-11
 
 ### Fixed

@@ -119,6 +119,7 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         data = self._device_data
         return {
             "device_id": data.get("id"),
+            "room_id": data.get("room_id"),
             "muller_type": data.get("muller_type"),
             "open_window": data.get("open_window", False),
             "muller_mode": data.get("therm_setpoint_mode"),
@@ -132,37 +133,55 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         if temperature is None:
             return
 
+        # Get the room_id from the device data (mapped in coordinator)
+        room_id = self._device_data.get("room_id")
+        if not room_id:
+            _LOGGER.error("No room_id found for device %s", self.device_id)
+            return
+
         await self.coordinator.api.set_room_temperature(
-            self.home_id, self.device_id, temperature
+            self.home_id, room_id, temperature
         )
         await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new target preset mode."""
         muller_mode = HA_TO_MULLER_PRESET.get(preset_mode)
-        
+
+        # Get the room_id from the device data (mapped in coordinator)
+        room_id = self._device_data.get("room_id")
+        if not room_id:
+            _LOGGER.error("No room_id found for device %s", self.device_id)
+            return
+
         if muller_mode == "home":
-            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "home")
+            await self.coordinator.api.set_room_mode(self.home_id, room_id, "home")
         elif muller_mode == "hg":
-            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "hg")
+            await self.coordinator.api.set_room_mode(self.home_id, room_id, "hg")
         elif muller_mode == "manual":
             # Just set the current temperature to stay in manual mode
             current_target = self.target_temperature
             if current_target is not None:
                 await self.coordinator.api.set_room_temperature(
-                    self.home_id, self.device_id, current_target
+                    self.home_id, room_id, current_target
                 )
-                
+
         await self.coordinator.async_request_refresh()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
-        # The API doesn't cleanly support turning a specific room ON/OFF directly 
+        # Get the room_id from the device data (mapped in coordinator)
+        room_id = self._device_data.get("room_id")
+        if not room_id:
+            _LOGGER.error("No room_id found for device %s", self.device_id)
+            return
+
+        # The API doesn't cleanly support turning a specific room ON/OFF directly
         # from the set state payload based on our Jeedom reference,
         # but we could attempt to send "off" or "home"
         if hvac_mode == HVACMode.OFF:
-            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "off")
+            await self.coordinator.api.set_room_mode(self.home_id, room_id, "off")
         elif hvac_mode == HVACMode.HEAT:
-            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "home")
-            
+            await self.coordinator.api.set_room_mode(self.home_id, room_id, "home")
+
         await self.coordinator.async_request_refresh()
