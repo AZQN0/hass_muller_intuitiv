@@ -13,20 +13,14 @@ from .const import (
     SCOPE,
     USER_PREFIX,
 )
+from .exceptions import (
+    MullerIntuitivAuthError,
+    MullerIntuitivApiError,
+    MullerIntuitivTimeoutError,
+    MullerIntuitivConnectionError,
+)
 
 _LOGGER = logging.getLogger(__name__)
-
-class MullerIntuitivAuthError(Exception):
-    """Exception for authentication errors."""
-
-class MullerIntuitivApiError(Exception):
-    """Exception for general API errors."""
-
-class MullerIntuitivTimeoutError(MullerIntuitivApiError):
-    """Exception for timeout errors."""
-
-class MullerIntuitivConnectionError(MullerIntuitivApiError):
-    """Exception for connection errors."""
 
 class MullerIntuitivApi:
     """API Client for Muller Intuitiv."""

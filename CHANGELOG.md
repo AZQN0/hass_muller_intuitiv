@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-05-11
+
+### Fixed
+- **CRITICAL**: Resolved "catching classes that do not inherit from BaseException" error in climate operations
+- Fixed duplicate exception class definitions causing runtime conflicts
+- Consolidated all exception definitions in exceptions.py module
+- Updated imports across api.py and coordinator.py to use proper exception hierarchy
+
+### Technical Changes
+- Removed duplicate exception classes from api.py
+- Centralized exception definitions in exceptions.py for consistency
+- All custom exceptions now properly inherit from MullerIntuitivError base class
+- Fixed module imports to prevent runtime exception handling errors
+
 ## [0.9.3] - 2026-05-11
 
 ### Major Architecture Changes
