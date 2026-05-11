@@ -7,6 +7,8 @@
 
 A Home Assistant custom integration for Muller Intuitiv heating systems. This integration allows you to monitor and control your Muller Intuitiv thermostats directly from Home Assistant.
 
+> **Acknowledgments**: This integration is inspired by the excellent work in the [Jeedom Muller Intuitiv plugin](https://github.com/shun84/jeedom-plugin-mullerintuitiv) by shun84. The API understanding and implementation patterns were adapted from that project.
+
 ## Features
 
 - 🌡️ **Climate Control**: Full thermostat control with temperature setting and preset modes

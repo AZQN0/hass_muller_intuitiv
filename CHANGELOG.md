@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-11
+
 ### Added
 - Initial release of Muller Intuitiv Home Assistant integration
 - Climate entity support for room temperature control
@@ -29,41 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Async/await pattern implementation
 - Home Assistant best practices compliance
 
-## [1.0.0] - 2026-05-11
-
-### Added
-- Initial implementation
-- Support for Muller Intuitiv heating systems
-- Climate platform integration
-- OAuth2 authentication
-- Multi-room support
-- Configuration flow for easy setup
-- Real-time temperature monitoring
-- Temperature control with preset modes
-
-### Features
-- **Climate Control**: Full thermostat functionality
-- **Multi-room Support**: Automatic discovery of all rooms
-- **Preset Modes**: Home, Eco, and Manual temperature settings
-- **Real-time Updates**: 60-second update interval
-- **Authentication**: Secure OAuth2 token management
-- **Device Integration**: Proper Home Assistant device registry support
-
-### Technical Details
-- Built with Home Assistant 2024+ compatibility
-- Async implementation for optimal performance
-- Comprehensive error handling
-- Automatic token refresh
-- Type-safe code with full type annotations
-- HACS compatible structure
-
 ---
 
 ## Release Notes
 
-### Version 1.0.0
+### Version 0.9.0
 
-This is the initial release of the Muller Intuitiv Home Assistant integration. The integration provides comprehensive control over your Muller Intuitiv heating system directly from Home Assistant.
+This is the initial public release of the Muller Intuitiv Home Assistant integration. The integration provides comprehensive control over your Muller Intuitiv heating system directly from Home Assistant.
 
 **Key Features:**
 - Complete climate control for all rooms
@@ -83,6 +57,10 @@ This is the initial release of the Muller Intuitiv Home Assistant integration. T
 - Home Assistant 2024.1.0 or newer
 - Active Muller Intuitiv account
 - Muller Intuitiv compatible heating system
+
+**Acknowledgments:**
+- Inspired by the [Jeedom Muller Intuitiv plugin](https://github.com/shun84/jeedom-plugin-mullerintuitiv) by shun84
+- API understanding adapted from the original Jeedom implementation
 
 **Future Plans:**
 - Enhanced scheduling features
