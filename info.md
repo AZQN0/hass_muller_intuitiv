@@ -154,8 +154,8 @@ logger:
 
 ## Support & Community
 
-- **Documentation**: [GitHub Repository](https://github.com/yourusername/hass_muller_intuitiv)
-- **Issues**: [Report bugs](https://github.com/yourusername/hass_muller_intuitiv/issues)
+- **Documentation**: [GitHub Repository](https://github.com/AZQN0/hass_muller_intuitiv)
+- **Issues**: [Report bugs](https://github.com/AZQN0/hass_muller_intuitiv/issues)
 - **Discussions**: [Community Forum](https://community.home-assistant.io/)
 
 ## Legal

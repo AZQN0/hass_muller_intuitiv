@@ -27,13 +27,13 @@ A Home Assistant custom integration for Muller Intuitiv heating systems. This in
    - Go to HACS → Integrations
    - Click the three dots in the top right corner
    - Select "Custom repositories"
-   - Add `https://github.com/yourusername/hass_muller_intuitiv` as an Integration
+   - Add `https://github.com/AZQN0/hass_muller_intuitiv` as an Integration
 3. Install the integration through HACS
 4. Restart Home Assistant
 
 ### Manual Installation
 
-1. Download the latest release from the [releases page](https://github.com/yourusername/hass_muller_intuitiv/releases)
+1. Download the latest release from the [releases page](https://github.com/AZQN0/hass_muller_intuitiv/releases)
 2. Extract the files
 3. Copy the `custom_components/muller_intuitiv` folder to your Home Assistant `custom_components` directory
 4. Restart Home Assistant
@@ -158,14 +158,14 @@ If you encounter issues:
 
 1. Check the [troubleshooting section](#troubleshooting)
 2. Review the Home Assistant logs
-3. Open an issue on [GitHub](https://github.com/yourusername/hass_muller_intuitiv/issues)
+3. Open an issue on [GitHub](https://github.com/AZQN0/hass_muller_intuitiv/issues)
 
 ---
 
 **Star this repo if you find it useful! ⭐**
 
-[commits-shield]: https://img.shields.io/github/commit-activity/y/yourusername/hass_muller_intuitiv.svg
-[commits]: https://github.com/yourusername/hass_muller_intuitiv/commits/main
-[license-shield]: https://img.shields.io/github/license/yourusername/hass_muller_intuitiv.svg
-[releases-shield]: https://img.shields.io/github/release/yourusername/hass_muller_intuitiv.svg
-[releases]: https://github.com/yourusername/hass_muller_intuitiv/releases
+[commits-shield]: https://img.shields.io/github/commit-activity/y/AZQN0/hass_muller_intuitiv.svg
+[commits]: https://github.com/AZQN0/hass_muller_intuitiv/commits/main
+[license-shield]: https://img.shields.io/github/license/AZQN0/hass_muller_intuitiv.svg
+[releases-shield]: https://img.shields.io/github/release/AZQN0/hass_muller_intuitiv.svg
+[releases]: https://github.com/AZQN0/hass_muller_intuitiv/releases
