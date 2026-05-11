@@ -38,11 +38,11 @@ HA_TO_MULLER_PRESET = {
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up the Muller Intuitiv climate platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     entities = []
-    for room_id, room_data in coordinator.data.items():
-        entities.append(MullerIntuitivClimate(coordinator, room_id, entry.data[CONF_HOME_ID]))
-        
+    for device_id, device_data in coordinator.data.items():
+        entities.append(MullerIntuitivClimate(coordinator, device_id, entry.data[CONF_HOME_ID]))
+
     async_add_entities(entities)
 
 class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
@@ -56,47 +56,53 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
     _attr_preset_modes = [PRESET_NONE, PRESET_HOME, PRESET_ECO]
 
-    def __init__(self, coordinator, room_id: str, home_id: str) -> None:
+    def __init__(self, coordinator, device_id: str, home_id: str) -> None:
         """Initialize the climate entity."""
         super().__init__(coordinator)
-        self.room_id = room_id
+        self.device_id = device_id
         self.home_id = home_id
+
+        # Get device info
+        device_data = coordinator.data.get(device_id, {})
+        muller_type = device_data.get("muller_type", "Unknown")
+
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"home_{home_id}")},
-            name="Muller Intuitiv Home",
+            identifiers={(DOMAIN, f"device_{device_id}")},
+            name=f"Muller {muller_type} {device_id[-4:]}",
             manufacturer="Muller",
-            model="Intuitiv",
+            model=f"Intuitiv {muller_type}",
+            via_device=(DOMAIN, f"home_{home_id}"),
         )
 
     @property
-    def _room_data(self) -> Dict[str, Any]:
-        """Get the room data from the coordinator."""
-        return self.coordinator.data.get(self.room_id, {})
+    def _device_data(self) -> Dict[str, Any]:
+        """Get the device data from the coordinator."""
+        return self.coordinator.data.get(self.device_id, {})
 
     @property
     def unique_id(self) -> str:
         """Return unique ID."""
-        return f"muller_intuitiv_{self.room_id}"
+        return f"muller_intuitiv_device_{self.device_id}"
 
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self._room_data.get("name", f"Room {self.room_id}")
+        return self._device_data.get("name", f"Heater {self.device_id}")
 
     @property
     def current_temperature(self) -> Optional[float]:
         """Return the current temperature."""
-        return self._room_data.get("therm_measured_temperature")
+        return self._device_data.get("therm_measured_temperature")
 
     @property
     def target_temperature(self) -> Optional[float]:
         """Return the temperature we try to reach."""
-        return self._room_data.get("therm_setpoint_temperature")
+        return self._device_data.get("therm_setpoint_temperature")
 
     @property
     def hvac_mode(self) -> HVACMode:
         """Return current operation ie. heat, cool, idle."""
-        mode = self._room_data.get("therm_setpoint_mode")
+        mode = self._device_data.get("therm_setpoint_mode")
         if mode == "off":
             return HVACMode.OFF
         return HVACMode.HEAT
@@ -104,15 +110,20 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     @property
     def preset_mode(self) -> Optional[str]:
         """Return current preset mode."""
-        mode = self._room_data.get("therm_setpoint_mode")
+        mode = self._device_data.get("therm_setpoint_mode")
         return MULLER_TO_HA_PRESET.get(mode, PRESET_NONE)
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return extra state attributes."""
+        data = self._device_data
         return {
-            "open_window": self._room_data.get("open_window", False),
-            "muller_mode": self._room_data.get("therm_setpoint_mode")
+            "device_id": data.get("id"),
+            "muller_type": data.get("muller_type"),
+            "open_window": data.get("open_window", False),
+            "muller_mode": data.get("therm_setpoint_mode"),
+            "presence": data.get("presence", False),
+            "boost_status": data.get("boost_status")
         }
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -122,7 +133,7 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
             return
 
         await self.coordinator.api.set_room_temperature(
-            self.home_id, self.room_id, temperature
+            self.home_id, self.device_id, temperature
         )
         await self.coordinator.async_request_refresh()
 
@@ -131,15 +142,15 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         muller_mode = HA_TO_MULLER_PRESET.get(preset_mode)
         
         if muller_mode == "home":
-            await self.coordinator.api.set_room_mode(self.home_id, self.room_id, "home")
+            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "home")
         elif muller_mode == "hg":
-            await self.coordinator.api.set_room_mode(self.home_id, self.room_id, "hg")
+            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "hg")
         elif muller_mode == "manual":
             # Just set the current temperature to stay in manual mode
             current_target = self.target_temperature
             if current_target is not None:
                 await self.coordinator.api.set_room_temperature(
-                    self.home_id, self.room_id, current_target
+                    self.home_id, self.device_id, current_target
                 )
                 
         await self.coordinator.async_request_refresh()
@@ -150,8 +161,8 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         # from the set state payload based on our Jeedom reference,
         # but we could attempt to send "off" or "home"
         if hvac_mode == HVACMode.OFF:
-            await self.coordinator.api.set_room_mode(self.home_id, self.room_id, "off")
+            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "off")
         elif hvac_mode == HVACMode.HEAT:
-            await self.coordinator.api.set_room_mode(self.home_id, self.room_id, "home")
+            await self.coordinator.api.set_room_mode(self.home_id, self.device_id, "home")
             
         await self.coordinator.async_request_refresh()

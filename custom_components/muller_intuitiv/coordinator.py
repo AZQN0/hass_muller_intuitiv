@@ -70,7 +70,27 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         raise UpdateFailed(f"Token refresh failed: {err}") from err
 
             try:
-                rooms = await self.api.get_home_status(self.home_id)
+                # Get device status (what API calls "rooms" are actually heating devices)
+                devices_data = await self.api.get_home_status(self.home_id)
+
+                # Process each heating device and create meaningful names
+                for device in devices_data:
+                    device_id = device.get("id")
+                    muller_type = device.get("muller_type", "Unknown")
+
+                    # Create user-friendly names
+                    short_id = device_id[-4:] if device_id else "XXXX"
+
+                    # Different naming based on device features
+                    if device.get("therm_measured_temperature") is not None:
+                        # Device with temperature sensor
+                        device_name = f"{muller_type} Thermostat {short_id}"
+                    else:
+                        # Device without temperature sensor (relay/actuator only)
+                        device_name = f"{muller_type} Heater {short_id}"
+
+                    device["name"] = device_name
+
             except MullerIntuitivAuthError:
                 # If we still get auth error after checking expiration, try refresh once more
                 _LOGGER.info("Authentication failed, attempting emergency token refresh...")
@@ -92,8 +112,26 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     # Update API client with new token
                     self.api.set_token(new_data["access_token"])
 
-                    # Retry fetch
-                    rooms = await self.api.get_home_status(self.home_id)
+                    # Retry fetch with device processing
+                    devices_data = await self.api.get_home_status(self.home_id)
+
+                    # Process each heating device and create meaningful names
+                    for device in devices_data:
+                        device_id = device.get("id")
+                        muller_type = device.get("muller_type", "Unknown")
+
+                        # Create user-friendly names
+                        short_id = device_id[-4:] if device_id else "XXXX"
+
+                        # Different naming based on device features
+                        if device.get("therm_measured_temperature") is not None:
+                            # Device with temperature sensor
+                            device_name = f"{muller_type} Thermostat {short_id}"
+                        else:
+                            # Device without temperature sensor (relay/actuator only)
+                            device_name = f"{muller_type} Heater {short_id}"
+
+                        device["name"] = device_name
 
                 except MullerIntuitivAuthError as err:
                     if "expired" in str(err).lower() or "invalid" in str(err).lower():
@@ -103,7 +141,7 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         _LOGGER.error("Emergency token refresh failed: %s", err)
                         raise UpdateFailed(f"Authentication failed: {err}") from err
                 
-            return {room["id"]: room for room in rooms}
+            return {device["id"]: device for device in devices_data}
 
         except (MullerIntuitivApiError, MullerIntuitivTimeoutError, MullerIntuitivConnectionError) as err:
             _LOGGER.error("API communication error: %s", err)

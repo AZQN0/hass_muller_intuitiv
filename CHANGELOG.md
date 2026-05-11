@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-05-11
+
+### Major Architecture Changes
+- **BREAKING**: Completely restructured integration to work with actual API data structure
+- Changed from room-based to device-based architecture (no longer tries to map logical rooms)
+- Integration now works directly with physical heating devices (FPN, FP4 modules)
+
+### Fixed
+- Resolved "Pas d'intégration" issue - entities will now be created correctly
+- Fixed critical room ID mismatch between homes data and status data
+- Eliminated incorrect mapping between logical room definitions and physical device status
+- Proper handling of devices with and without temperature sensors
+
+### Changed
+- Entity names now reflect actual device types: "FPN Thermostat XXXX" or "FPN Heater XXXX"
+- Entity IDs changed to use device IDs instead of non-existent room mappings
+- Enhanced device information in Home Assistant device registry
+- Added device-specific attributes (muller_type, presence, boost_status)
+
+### Added
+- Automatic detection of device capabilities (temperature sensor vs relay-only)
+- User-friendly device naming based on device type and features
+- Better error handling for systems with mixed device types
+
+### Technical Details
+- Coordinator now processes homestatus "rooms" as physical heating devices
+- Climate entities use actual device IDs for API calls
+- Removed failed attempt to merge homes data room names with status data
+- API calls properly target individual heating device endpoints
+
+### Verified
+- Tested with real 2-device heating system showing proper entity creation
+- Confirmed compatibility with FPN devices (both sensor and non-sensor variants)
+- All device control functions (temperature, preset modes, HVAC modes) working correctly
+
 ## [0.9.2] - 2026-05-11
 
 ### Fixed

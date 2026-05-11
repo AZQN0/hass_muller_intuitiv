@@ -51,13 +51,20 @@ A Home Assistant custom integration for Muller Intuitiv heating systems. This in
 
 ### Credentials
 
-You'll need the same username and password you use for the official Muller Intuitiv mobile app. The integration will automatically discover your home and rooms.
+You'll need the same username and password you use for the official Muller Intuitiv mobile app. The integration will automatically discover your home and active heating devices.
+
+> **Note**: This integration works directly with your **physical heating devices** (FPN, FP4 modules) rather than logical room definitions. Each active heating device becomes a separate climate entity in Home Assistant.
 
 ## Usage
 
 ### Climate Entities
 
-Each room in your Muller Intuitiv system will appear as a climate entity in Home Assistant with the following features:
+Each **heating device** in your Muller Intuitiv system will appear as a climate entity in Home Assistant. The integration automatically detects physical heating devices and creates entities with descriptive names:
+
+- **FPN Thermostat XXXX**: Devices with temperature sensors (can read current temperature)
+- **FPN Heater XXXX**: Devices without sensors (heating control only)
+
+Each entity provides the following features:
 
 - **Current Temperature**: Real-time temperature reading
 - **Target Temperature**: Set your desired temperature
@@ -79,7 +86,7 @@ automation:
     action:
       service: climate.set_preset_mode
       target:
-        entity_id: climate.living_room
+        entity_id: climate.muller_intuitiv_device_3347167131
       data:
         preset_mode: "eco"
 
@@ -91,7 +98,7 @@ automation:
     action:
       service: climate.set_preset_mode
       target:
-        entity_id: climate.living_room
+        entity_id: climate.muller_intuitiv_device_3347167131
       data:
         preset_mode: "home"
 ```
@@ -100,8 +107,8 @@ automation:
 
 ```yaml
 type: thermostat
-entity: climate.living_room
-name: Living Room
+entity: climate.muller_intuitiv_device_3347167131
+name: FPN Thermostat 7131
 ```
 
 ## Troubleshooting
@@ -117,9 +124,10 @@ name: Living Room
 - Ensure your Muller Intuitiv account is active
 - Try logging into the mobile app to confirm credentials
 
-**No rooms found**
+**No heating devices found**
 - Make sure your Muller Intuitiv system is properly configured
-- Check that rooms are visible in the mobile app
+- Check that heating devices are visible and responding in the mobile app
+- Verify that your heating system has active FPN or FP4 devices
 
 ### Debug Logging
 
