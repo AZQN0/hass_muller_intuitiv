@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-05-11
+
+### Fixed
+- **CRITICAL**: Resolved "catching classes that do not inherit from BaseException" runtime error
+- Fixed aiohttp exception handling in API module that was preventing climate operations
+- **AUTO-RECOVERY**: Added automatic home_id refresh when "Invalid home_id" error occurs
+- Integration now auto-recovers from invalid home_id without requiring reconfiguration
+- Improved exception hierarchy to properly catch aiohttp timeout and connection errors
+
+### Technical Changes
+- Fixed aiohttp.ClientTimeout exception handling in api.py:167
+- Removed duplicate ClientError exception handlers
+- Added intelligent home_id refresh logic in coordinator when API returns invalid home_id error
+- Automatic config entry update with refreshed home_id for persistent recovery
+- Enhanced error handling with specific recovery strategies
+
+This resolves the recurring runtime errors that were preventing the integration from functioning.
+
+## [0.9.7] - 2026-05-11
+
+### Fixed
+- **CRITICAL**: Fixed device-to-room mapping failures for devices 2483305402 and 3347167131
+- Resolved "Could not find room mapping for device X" errors preventing entity creation
+- Enhanced device ID matching with robust type conversion (string/integer compatibility)
+- Device mapping now handles API inconsistencies between homesdata and homestatus endpoints
+
+### Technical Changes
+- Improved device-to-room mapping logic with multi-type ID storage (original, string, integer)
+- Added comprehensive error handling for device ID type mismatches
+- Enhanced logging to show all mapping keys for better troubleshooting
+- Fixed coordinator mapping logic to work with both string and numeric device IDs
+
+This resolves the core issue preventing climate entities from being created in Home Assistant.
+
 ## [0.9.6] - 2026-05-11
 
 ### Fixed

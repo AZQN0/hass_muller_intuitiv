@@ -164,7 +164,7 @@ class MullerIntuitivApi:
                     raise MullerIntuitivApiError(f"API request failed with status {response.status}: {error_text}")
 
                 return await response.json()
-        except aiohttp.ClientTimeout as err:
+        except (aiohttp.ClientTimeout, aiohttp.ServerTimeoutError) as err:
             _LOGGER.error("Timeout error for %s: %s", url, err)
             raise MullerIntuitivTimeoutError(f"Request timeout for {endpoint}") from err
         except aiohttp.ClientError as err:

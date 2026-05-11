@@ -92,6 +92,7 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         _LOGGER.debug("  Module %d: ID=%s, Type=%s", j, module_id, module_type)
 
                 # Create device-to-room mapping from home structure
+                # Use both string and int versions of IDs to handle API inconsistencies
                 device_to_room_map = {}
                 for room in rooms_from_home:
                     room_id = room.get("id")
@@ -100,14 +101,47 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     for module in modules:
                         device_id = module.get("id")
                         if device_id:
+                            # Store mapping with original ID
                             device_to_room_map[device_id] = room_id
+                            # Also store string version
+                            device_to_room_map[str(device_id)] = room_id
+                            # Also store int version if possible
+                            try:
+                                int_device_id = int(device_id)
+                                device_to_room_map[int_device_id] = room_id
+                            except (ValueError, TypeError):
+                                pass
                             _LOGGER.info("Mapped device %s to room %s (%s)", device_id, room_id, room_name)
 
-                _LOGGER.info("Device-to-room mapping completed: %d devices mapped", len(device_to_room_map))
+                original_device_count = len([k for k, v in device_to_room_map.items() if not isinstance(k, (str, int)) or (isinstance(k, str) and not k.isdigit())])
+                _LOGGER.info("Device-to-room mapping completed: %d total mappings (including type variations)", len(device_to_room_map))
+                _LOGGER.debug("All mapping keys: %s", list(device_to_room_map.keys()))
 
                 # Get device status (what API calls "rooms" are actually heating devices)
                 _LOGGER.debug("Fetching device status data...")
-                devices_data = await self.api.get_home_status(self.home_id)
+                try:
+                    devices_data = await self.api.get_home_status(self.home_id)
+                except MullerIntuitivApiError as err:
+                    if "Invalid home_id" in str(err):
+                        _LOGGER.warning("Home ID %s is invalid, refreshing home data...", self.home_id)
+                        # Refresh home_id from the current home data
+                        fresh_home_data = await self.api.get_homes_data()
+                        new_home_id = fresh_home_data.get("id")
+                        if new_home_id and new_home_id != self.home_id:
+                            _LOGGER.info("Updated home_id from %s to %s", self.home_id, new_home_id)
+                            self.home_id = new_home_id
+                            # Update config entry with new home_id
+                            self.hass.config_entries.async_update_entry(
+                                self.config_entry,
+                                data={**self.config_entry.data, "home_id": new_home_id}
+                            )
+                            # Retry with new home_id
+                            devices_data = await self.api.get_home_status(self.home_id)
+                        else:
+                            _LOGGER.error("Could not refresh home_id, no valid home found")
+                            raise
+                    else:
+                        raise
 
                 _LOGGER.info("Device status received: %d devices found", len(devices_data))
 
@@ -190,6 +224,7 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     rooms_from_home = home_data.get("rooms", [])
 
                     # Create device-to-room mapping from home structure
+                    # Use both string and int versions of IDs to handle API inconsistencies
                     device_to_room_map = {}
                     for room in rooms_from_home:
                         room_id = room.get("id")
@@ -197,7 +232,16 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         for module in modules:
                             device_id = module.get("id")
                             if device_id:
+                                # Store mapping with original ID
                                 device_to_room_map[device_id] = room_id
+                                # Also store string version
+                                device_to_room_map[str(device_id)] = room_id
+                                # Also store int version if possible
+                                try:
+                                    int_device_id = int(device_id)
+                                    device_to_room_map[int_device_id] = room_id
+                                except (ValueError, TypeError):
+                                    pass
                                 _LOGGER.debug("Mapped device %s to room %s", device_id, room_id)
 
                     devices_data = await self.api.get_home_status(self.home_id)
