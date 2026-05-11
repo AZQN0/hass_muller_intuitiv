@@ -1,0 +1,12 @@
+{
+  "domain": "muller_intuitiv",
+  "name": "Muller Intuitiv",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/shun84/jeedom-plugin-mullerintuitiv",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "version": "1.0.0"
+}
