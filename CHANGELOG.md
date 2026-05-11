@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-05-11
+
+### Fixed
+- Enhanced authentication error handling with specific "invalid_grant" error messages
+- Improved token refresh failure detection and user guidance
+- Added debug logging for authentication processes to aid troubleshooting
+- Better handling of expired refresh tokens with clear reconfiguration prompts
+- More robust error recovery in coordinator when tokens become invalid
+- Network error handling during authentication and token refresh operations
+
+### Changed
+- Authentication errors now provide clearer messaging to users
+- Token refresh failures automatically trigger reconfiguration requirements
+- Added proactive token validation before API calls
+
+### Verified
+- All authentication fixes verified with comprehensive integration tests against real Muller Intuitiv API
+- Successfully tested login, token refresh, API calls, and error handling scenarios
+- Confirmed proper handling of 4-room heating system (Home: "Chalet Mornex")
+
 ## [0.9.1] - 2026-05-11
 
 ### Fixed

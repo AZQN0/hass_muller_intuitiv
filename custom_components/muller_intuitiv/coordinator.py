@@ -46,17 +46,28 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.info("Token expired or expiring soon, attempting to refresh...")
                 refresh_token = self.entry.data.get("refresh_token")
                 if not refresh_token:
-                    raise UpdateFailed("No refresh token available")
+                    raise UpdateFailed("No refresh token available - please reconfigure integration")
 
-                new_tokens = await self.api.refresh_token(refresh_token)
+                try:
+                    new_tokens = await self.api.refresh_token(refresh_token)
 
-                # Update config entry with new tokens
-                new_data = {**self.entry.data}
-                new_data["access_token"] = new_tokens.get("access_token")
-                new_data["refresh_token"] = new_tokens.get("refresh_token")
-                new_data["expires_in"] = new_tokens.get("expires_in")
-                new_data[CONF_EXPIRES_AT] = new_tokens.get("expires_at")
-                self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+                    # Update config entry with new tokens
+                    new_data = {**self.entry.data}
+                    new_data["access_token"] = new_tokens.get("access_token")
+                    new_data["refresh_token"] = new_tokens.get("refresh_token")
+                    new_data["expires_in"] = new_tokens.get("expires_in")
+                    new_data[CONF_EXPIRES_AT] = new_tokens.get("expires_at")
+                    self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+
+                    # Update API client with new token
+                    self.api.set_token(new_data["access_token"])
+
+                except MullerIntuitivAuthError as err:
+                    if "expired" in str(err).lower() or "invalid" in str(err).lower():
+                        _LOGGER.error("Refresh token expired or invalid - reconfiguration required: %s", err)
+                        raise UpdateFailed("Authentication tokens expired - please reconfigure the integration")
+                    else:
+                        raise UpdateFailed(f"Token refresh failed: {err}") from err
 
             try:
                 rooms = await self.api.get_home_status(self.home_id)
@@ -65,20 +76,32 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.info("Authentication failed, attempting emergency token refresh...")
                 refresh_token = self.entry.data.get("refresh_token")
                 if not refresh_token:
-                    raise UpdateFailed("No refresh token available")
+                    raise UpdateFailed("No refresh token available - please reconfigure integration")
 
-                new_tokens = await self.api.refresh_token(refresh_token)
+                try:
+                    new_tokens = await self.api.refresh_token(refresh_token)
 
-                # Update config entry with new tokens
-                new_data = {**self.entry.data}
-                new_data["access_token"] = new_tokens.get("access_token")
-                new_data["refresh_token"] = new_tokens.get("refresh_token")
-                new_data["expires_in"] = new_tokens.get("expires_in")
-                new_data[CONF_EXPIRES_AT] = new_tokens.get("expires_at")
-                self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+                    # Update config entry with new tokens
+                    new_data = {**self.entry.data}
+                    new_data["access_token"] = new_tokens.get("access_token")
+                    new_data["refresh_token"] = new_tokens.get("refresh_token")
+                    new_data["expires_in"] = new_tokens.get("expires_in")
+                    new_data[CONF_EXPIRES_AT] = new_tokens.get("expires_at")
+                    self.hass.config_entries.async_update_entry(self.entry, data=new_data)
 
-                # Retry fetch
-                rooms = await self.api.get_home_status(self.home_id)
+                    # Update API client with new token
+                    self.api.set_token(new_data["access_token"])
+
+                    # Retry fetch
+                    rooms = await self.api.get_home_status(self.home_id)
+
+                except MullerIntuitivAuthError as err:
+                    if "expired" in str(err).lower() or "invalid" in str(err).lower():
+                        _LOGGER.error("Emergency token refresh failed - tokens expired: %s", err)
+                        raise UpdateFailed("Authentication tokens expired - please reconfigure the integration")
+                    else:
+                        _LOGGER.error("Emergency token refresh failed: %s", err)
+                        raise UpdateFailed(f"Authentication failed: {err}") from err
                 
             return {room["id"]: room for room in rooms}
 

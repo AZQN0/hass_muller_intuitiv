@@ -53,18 +53,46 @@ class MullerIntuitivApi:
             "username": username,
             "password": password,
         }
-        
-        async with self._session.post(url, data=payload, timeout=self._timeout) as response:
-            if response.status != 200:
-                _LOGGER.error("Failed to authenticate: %s", await response.text())
-                raise MullerIntuitivAuthError("Authentication failed")
-            
-            data = await response.json()
-            self._token = data.get("access_token")
-            # Calculate and store expiration timestamp
-            expires_in = data.get("expires_in", 3600)  # Default 1 hour
-            data["expires_at"] = int(time.time()) + expires_in
-            return data
+
+        _LOGGER.debug("Attempting login for username: %s", username[:3] + "***")
+
+        try:
+            async with self._session.post(url, data=payload, timeout=self._timeout) as response:
+                response_text = await response.text()
+
+                if response.status != 200:
+                    _LOGGER.error("Authentication failed (status %d): %s", response.status, response_text)
+
+                    # Provide more specific error messages
+                    if response.status == 400:
+                        if "invalid_grant" in response_text:
+                            raise MullerIntuitivAuthError("Invalid username or password")
+                        elif "invalid_client" in response_text:
+                            raise MullerIntuitivAuthError("Client authentication failed")
+                        else:
+                            raise MullerIntuitivAuthError("Bad request - check credentials")
+                    elif response.status == 401:
+                        raise MullerIntuitivAuthError("Unauthorized - invalid credentials")
+                    else:
+                        raise MullerIntuitivAuthError(f"Authentication failed with status {response.status}")
+
+                data = await response.json()
+                self._token = data.get("access_token")
+
+                if not self._token:
+                    _LOGGER.error("No access token received in response")
+                    raise MullerIntuitivAuthError("No access token in response")
+
+                # Calculate and store expiration timestamp
+                expires_in = data.get("expires_in", 3600)  # Default 1 hour
+                data["expires_at"] = int(time.time()) + expires_in
+
+                _LOGGER.debug("Login successful, token expires in %d seconds", expires_in)
+                return data
+
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Network error during authentication: %s", err)
+            raise MullerIntuitivConnectionError(f"Network error during authentication: {err}") from err
 
     async def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
         """Refresh the access token."""
@@ -76,17 +104,46 @@ class MullerIntuitivApi:
             "refresh_token": refresh_token,
         }
 
-        async with self._session.post(url, data=payload, timeout=self._timeout) as response:
-            if response.status != 200:
-                _LOGGER.error("Failed to refresh token: %s", await response.text())
-                raise MullerIntuitivAuthError("Token refresh failed")
+        _LOGGER.debug("Attempting to refresh token")
 
-            data = await response.json()
-            self._token = data.get("access_token")
-            # Calculate and store expiration timestamp
-            expires_in = data.get("expires_in", 3600)  # Default 1 hour
-            data["expires_at"] = int(time.time()) + expires_in
-            return data
+        try:
+            async with self._session.post(url, data=payload, timeout=self._timeout) as response:
+                response_text = await response.text()
+
+                if response.status != 200:
+                    _LOGGER.error("Token refresh failed (status %d): %s", response.status, response_text)
+
+                    # Provide more specific error messages
+                    if response.status == 400:
+                        if "invalid_grant" in response_text:
+                            # Refresh token is expired or invalid - requires re-authentication
+                            raise MullerIntuitivAuthError("Refresh token expired - please re-authenticate")
+                        elif "invalid_client" in response_text:
+                            raise MullerIntuitivAuthError("Client authentication failed during token refresh")
+                        else:
+                            raise MullerIntuitivAuthError("Bad request during token refresh")
+                    elif response.status == 401:
+                        raise MullerIntuitivAuthError("Unauthorized - refresh token invalid")
+                    else:
+                        raise MullerIntuitivAuthError(f"Token refresh failed with status {response.status}")
+
+                data = await response.json()
+                self._token = data.get("access_token")
+
+                if not self._token:
+                    _LOGGER.error("No access token received in refresh response")
+                    raise MullerIntuitivAuthError("No access token in refresh response")
+
+                # Calculate and store expiration timestamp
+                expires_in = data.get("expires_in", 3600)  # Default 1 hour
+                data["expires_at"] = int(time.time()) + expires_in
+
+                _LOGGER.debug("Token refresh successful, new token expires in %d seconds", expires_in)
+                return data
+
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Network error during token refresh: %s", err)
+            raise MullerIntuitivConnectionError(f"Network error during token refresh: {err}") from err
 
     async def _post(self, endpoint: str, json_data: Optional[Dict] = None) -> Dict[str, Any]:
         """Make a POST request to the API."""
