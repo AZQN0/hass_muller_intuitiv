@@ -7,8 +7,14 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_HOME_ID, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, CONF_EXPIRES_IN
-from .api import MullerIntuitivApi, MullerIntuitivAuthError
+from .const import DOMAIN, CONF_HOME_ID, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, CONF_EXPIRES_IN, CONF_EXPIRES_AT
+from .api import (
+    MullerIntuitivApi,
+    MullerIntuitivAuthError,
+    MullerIntuitivApiError,
+    MullerIntuitivTimeoutError,
+    MullerIntuitivConnectionError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,12 +55,17 @@ class MullerIntuitivConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_ACCESS_TOKEN: tokens.get("access_token"),
                             CONF_REFRESH_TOKEN: tokens.get("refresh_token"),
                             CONF_EXPIRES_IN: tokens.get("expires_in"),
+                            CONF_EXPIRES_AT: tokens.get("expires_at"),
                         },
                     )
 
             except MullerIntuitivAuthError:
                 errors["base"] = "invalid_auth"
-            except Exception as ex:  # pylint: disable=broad-except
+            except (MullerIntuitivTimeoutError, MullerIntuitivConnectionError):
+                errors["base"] = "cannot_connect"
+            except MullerIntuitivApiError:
+                errors["base"] = "api_error"
+            except Exception as ex:
                 _LOGGER.exception("Unexpected exception: %s", ex)
                 errors["base"] = "unknown"
 

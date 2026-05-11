@@ -11,7 +11,14 @@ CLIENT_SECRET = "rAeWu8Y3YqXEPqRJ4BpFzFG98MRXpCcz"
 USER_PREFIX = "muller"
 SCOPE = "read_muller write_muller"
 
+# Configuration keys
 CONF_HOME_ID = "home_id"
 CONF_ACCESS_TOKEN = "access_token"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_EXPIRES_IN = "expires_in"
+CONF_EXPIRES_AT = "expires_at"
+
+# Default values
+DEFAULT_UPDATE_INTERVAL = 60  # seconds
+DEFAULT_MANUAL_DURATION = 120  # minutes
+HTTP_TIMEOUT = 30  # seconds

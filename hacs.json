@@ -1,0 +1,7 @@
+{
+  "name": "Muller Intuitiv",
+  "hacs": "1.6.0",
+  "domains": ["climate"],
+  "iot_class": "Cloud Polling",
+  "homeassistant": "2024.1.0"
+}

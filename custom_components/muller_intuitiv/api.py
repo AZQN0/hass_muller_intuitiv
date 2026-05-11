@@ -1,9 +1,10 @@
 import aiohttp
 import logging
+import time
 from typing import Any, Dict, List, Optional
 from datetime import datetime
 
-from .const import API_BASE_URL, CLIENT_ID, CLIENT_SECRET, USER_PREFIX, SCOPE
+from .const import (\n    API_BASE_URL,\n    CLIENT_ID,\n    CLIENT_SECRET,\n    DEFAULT_MANUAL_DURATION,\n    HTTP_TIMEOUT,\n    SCOPE,\n    USER_PREFIX,\n)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -13,6 +14,12 @@ class MullerIntuitivAuthError(Exception):
 class MullerIntuitivApiError(Exception):
     """Exception for general API errors."""
 
+class MullerIntuitivTimeoutError(MullerIntuitivApiError):
+    """Exception for timeout errors."""
+
+class MullerIntuitivConnectionError(MullerIntuitivApiError):
+    """Exception for connection errors."""
+
 class MullerIntuitivApi:
     """API Client for Muller Intuitiv."""
 
@@ -20,6 +27,7 @@ class MullerIntuitivApi:
         """Initialize the API client."""
         self._session = session
         self._token = token
+        self._timeout = aiohttp.ClientTimeout(total=HTTP_TIMEOUT)
 
     def set_token(self, token: str) -> None:
         """Set the access token."""
@@ -38,13 +46,16 @@ class MullerIntuitivApi:
             "password": password,
         }
         
-        async with self._session.post(url, data=payload) as response:
+        async with self._session.post(url, data=payload, timeout=self._timeout) as response:
             if response.status != 200:
                 _LOGGER.error("Failed to authenticate: %s", await response.text())
                 raise MullerIntuitivAuthError("Authentication failed")
             
             data = await response.json()
             self._token = data.get("access_token")
+            # Calculate and store expiration timestamp
+            expires_in = data.get("expires_in", 3600)  # Default 1 hour
+            data["expires_at"] = int(time.time()) + expires_in
             return data
 
     async def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
@@ -56,14 +67,17 @@ class MullerIntuitivApi:
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
         }
-        
-        async with self._session.post(url, data=payload) as response:
+
+        async with self._session.post(url, data=payload, timeout=self._timeout) as response:
             if response.status != 200:
                 _LOGGER.error("Failed to refresh token: %s", await response.text())
                 raise MullerIntuitivAuthError("Token refresh failed")
-            
+
             data = await response.json()
             self._token = data.get("access_token")
+            # Calculate and store expiration timestamp
+            expires_in = data.get("expires_in", 3600)  # Default 1 hour
+            data["expires_at"] = int(time.time()) + expires_in
             return data
 
     async def _post(self, endpoint: str, json_data: Optional[Dict] = None) -> Dict[str, Any]:
@@ -77,14 +91,26 @@ class MullerIntuitivApi:
             "Accept": "application/json"
         }
 
-        async with self._session.post(url, headers=headers, json=json_data) as response:
-            if response.status == 401:
-                raise MullerIntuitivAuthError("Unauthorized")
-            if response.status != 200:
-                _LOGGER.error("API error %s: %s", response.status, await response.text())
-                raise MullerIntuitivApiError(f"API request failed with status {response.status}")
-            
-            return await response.json()
+        try:
+            async with self._session.post(url, headers=headers, json=json_data, timeout=self._timeout) as response:
+                if response.status == 401:
+                    raise MullerIntuitivAuthError("Unauthorized")
+                if response.status == 403:
+                    raise MullerIntuitivAuthError("Forbidden - check credentials")
+                if response.status >= 500:
+                    raise MullerIntuitivApiError(f"Server error: {response.status}")
+                if response.status != 200:
+                    error_text = await response.text()
+                    _LOGGER.error("API error %s: %s", response.status, error_text)
+                    raise MullerIntuitivApiError(f"API request failed with status {response.status}: {error_text}")
+
+                return await response.json()
+        except aiohttp.ClientTimeout as err:
+            _LOGGER.error("Timeout error for %s: %s", url, err)
+            raise MullerIntuitivTimeoutError(f"Request timeout for {endpoint}") from err
+        except aiohttp.ClientError as err:
+            _LOGGER.error("Connection error for %s: %s", url, err)
+            raise MullerIntuitivConnectionError(f"Connection error for {endpoint}") from err
 
     async def get_homes_data(self) -> Dict[str, Any]:
         """Fetch home data including IDs, modes, and schedules."""
@@ -115,9 +141,8 @@ class MullerIntuitivApi:
             
         await self._post("/syncapi/v1/setstate", json_data=payload)
 
-    async def set_room_temperature(self, home_id: str, room_id: str, temperature: float, default_duration_mins: int = 120) -> None:
+    async def set_room_temperature(self, home_id: str, room_id: str, temperature: float, default_duration_mins: int = DEFAULT_MANUAL_DURATION) -> None:
         """Set a manual temperature override for a room."""
-        import time
         end_time = int(time.time()) + (default_duration_mins * 60)
         
         payload = {

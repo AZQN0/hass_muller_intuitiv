@@ -8,12 +8,13 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.components.climate.const import (
-    PRESET_HOME,
     PRESET_ECO,
+    PRESET_HOME,
     PRESET_NONE,
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, CONF_HOME_ID
@@ -33,7 +34,7 @@ HA_TO_MULLER_PRESET = {
     PRESET_ECO: "hg",
 }
 
-async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities):
+async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities) -> None:
     """Set up the Muller Intuitiv climate platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     
@@ -54,14 +55,20 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
     _attr_preset_modes = [PRESET_NONE, PRESET_HOME, PRESET_ECO]
 
-    def __init__(self, coordinator, room_id: str, home_id: str):
+    def __init__(self, coordinator, room_id: str, home_id: str) -> None:
         """Initialize the climate entity."""
         super().__init__(coordinator)
         self.room_id = room_id
         self.home_id = home_id
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"home_{home_id}")},
+            name="Muller Intuitiv Home",
+            manufacturer="Muller",
+            model="Intuitiv",
+        )
 
     @property
-    def _room_data(self):
+    def _room_data(self) -> dict[str, Any]:
         """Get the room data from the coordinator."""
         return self.coordinator.data.get(self.room_id, {})
 
@@ -76,12 +83,12 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         return self._room_data.get("name", f"Room {self.room_id}")
 
     @property
-    def current_temperature(self) -> float:
+    def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._room_data.get("therm_measured_temperature")
 
     @property
-    def target_temperature(self) -> float:
+    def target_temperature(self) -> float | None:
         """Return the temperature we try to reach."""
         return self._room_data.get("therm_setpoint_temperature")
 
@@ -94,7 +101,7 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         return HVACMode.HEAT
 
     @property
-    def preset_mode(self) -> str:
+    def preset_mode(self) -> str | None:
         """Return current preset mode."""
         mode = self._room_data.get("therm_setpoint_mode")
         return MULLER_TO_HA_PRESET.get(mode, PRESET_NONE)
