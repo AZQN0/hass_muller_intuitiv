@@ -1,13 +1,13 @@
 {
   "domain": "muller_intuitiv",
   "name": "Muller Intuitiv",
-  "codeowners": [],
+  "codeowners": ["@AZQN0"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/AZQN0/hass_muller_intuitiv",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/AZQN0/hass_muller_intuitiv/issues",
-  "requirements": [],
-  "version": "0.9.3"
+  "requirements": ["aiohttp>=3.8.0"],
+  "version": "0.9.4"
 }

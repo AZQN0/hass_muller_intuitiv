@@ -2,8 +2,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set up Muller Intuitiv",
-        "description": "Enter your Muller Intuitiv credentials",
+        "title": "Muller Intuitiv",
+        "description": "Enter your Muller Intuitiv account credentials to connect your heating system.",
         "data": {
           "username": "Username",
           "password": "Password"
@@ -11,14 +11,26 @@
       }
     },
     "error": {
-      "invalid_auth": "Invalid username or password",
-      "cannot_connect": "Cannot connect to Muller Intuitiv servers",
-      "no_home_found": "No home found in your Muller Intuitiv account",
-      "api_error": "API error occurred",
-      "unknown": "Unknown error occurred"
+      "invalid_auth": "Invalid username or password. Please check your credentials.",
+      "cannot_connect": "Unable to connect to Muller Intuitiv servers. Check your internet connection.",
+      "api_error": "API communication error. Please try again later.",
+      "no_home_found": "No home found in your Muller Intuitiv account.",
+      "unknown": "An unexpected error occurred. Please check the logs."
     },
     "abort": {
-      "already_configured": "Integration is already configured"
+      "already_configured": "This Muller Intuitiv home is already configured.",
+      "single_instance_allowed": "Only one Muller Intuitiv integration is allowed per home."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Options",
+        "description": "Configure integration options",
+        "data": {
+          "update_interval": "Update interval (seconds)"
+        }
+      }
     }
   }
 }

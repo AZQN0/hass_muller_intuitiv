@@ -1,0 +1,41 @@
+set_heating_mode:
+  name: Set heating mode
+  description: Set the heating mode for a specific room
+  target:
+    entity:
+      domain: climate
+      integration: muller_intuitiv
+  fields:
+    mode:
+      name: Mode
+      description: The heating mode to set
+      required: true
+      selector:
+        select:
+          options:
+            - "manual"
+            - "home"
+            - "hg"
+
+set_boost_mode:
+  name: Set boost mode
+  description: Enable or disable boost mode for a room
+  target:
+    entity:
+      domain: climate
+      integration: muller_intuitiv
+  fields:
+    enable:
+      name: Enable boost
+      description: Enable or disable boost mode
+      required: true
+      selector:
+        boolean:
+    duration:
+      name: Duration
+      description: Boost duration in minutes (default 120)
+      selector:
+        number:
+          min: 5
+          max: 480
+          unit_of_measurement: minutes
