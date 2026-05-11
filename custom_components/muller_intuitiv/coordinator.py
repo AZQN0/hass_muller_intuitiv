@@ -2,12 +2,13 @@
 import logging
 from datetime import timedelta
 import time
-from typing import Dict
+from typing import Dict, List, Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import MullerIntuitivApi
+from .device_manager import DeviceManager, DeviceChange
 from .exceptions import (
     MullerIntuitivAuthError,
     MullerIntuitivApiError,
@@ -26,6 +27,10 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
         self.api = api
         self.entry = entry
         self.home_id: str = entry.data[CONF_HOME_ID]
+        self.device_manager = DeviceManager()
+
+        # Register for device change notifications
+        self.device_manager.register_change_callback(self._handle_device_changes)
 
         super().__init__(
             hass,
@@ -281,11 +286,47 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         _LOGGER.error("Emergency token refresh failed: %s", err)
                         raise UpdateFailed(f"Authentication failed: {err}") from err
 
-            return {device["id"]: device for device in devices_data}
+            # Prepare device data for DeviceManager
+            new_devices = {device["id"]: device for device in devices_data}
+
+            # Update device manager and detect changes
+            device_changes = self.device_manager.update_devices(new_devices)
+
+            if device_changes:
+                _LOGGER.info("Device changes detected: %d changes", len(device_changes))
+                for change in device_changes:
+                    _LOGGER.info("Device %s: %s", change.change_type, change.device_id)
+
+            return new_devices
 
         except (MullerIntuitivApiError, MullerIntuitivTimeoutError, MullerIntuitivConnectionError) as err:
             _LOGGER.error("API communication error: %s", err)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
-        except Exception as err:
-            _LOGGER.exception("Unexpected error during data update: %s", err)
-            raise UpdateFailed(f"Unexpected error: {err}") from err
+
+    def _handle_device_changes(self, changes: List[DeviceChange]) -> None:
+        """Handle device changes from DeviceManager."""
+        _LOGGER.info("Processing %d device changes", len(changes))
+
+        for change in changes:
+            if change.change_type == "added":
+                _LOGGER.info("New device detected: %s", change.device_id)
+                # Device will be added automatically on next platform setup
+                # For now, just log the event - full dynamic addition comes later
+
+            elif change.change_type == "removed":
+                _LOGGER.info("Device removed: %s", change.device_id)
+                # Mark device as unavailable in device manager
+                self.device_manager.mark_device_unavailable(change.device_id)
+
+            elif change.change_type == "modified":
+                _LOGGER.debug("Device modified: %s", change.device_id)
+                # Data updates are handled automatically via coordinator.data
+                # This is just for logging and potential future actions
+
+    def is_device_available(self, device_id: str) -> bool:
+        """Check if a device is available."""
+        return self.device_manager.is_device_available(device_id)
+
+    def get_device_statistics(self) -> Dict[str, Any]:
+        """Get device manager statistics."""
+        return self.device_manager.get_statistics()

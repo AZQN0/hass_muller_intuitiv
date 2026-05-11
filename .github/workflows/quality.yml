@@ -1,0 +1,210 @@
+name: Code Quality & Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-dev.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Code formatting check (Black)
+        run: black --check --diff .
+
+      - name: Import sorting check (isort)
+        run: isort --check-only --diff .
+
+      - name: Linting (Pylint)
+        run: pylint custom_components/muller_intuitiv --score=yes
+
+      - name: Linting (Flake8)
+        run: flake8 custom_components/muller_intuitiv
+
+      - name: Type checking (MyPy)
+        run: mypy custom_components/muller_intuitiv
+
+      - name: Security check (Bandit)
+        run: bandit -r custom_components/muller_intuitiv -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements-dev.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --cov-report=xml
+
+      - name: Run integration tests
+        run: pytest tests/integration/ -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
+
+  validate-manifest:
+    name: Validate Home Assistant Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          python -c "
+          import json
+          import sys
+          try:
+              with open('custom_components/muller_intuitiv/manifest.json') as f:
+                  manifest = json.load(f)
+              required_fields = ['domain', 'name', 'version', 'documentation', 'issue_tracker']
+              missing = [field for field in required_fields if field not in manifest]
+              if missing:
+                  print(f'Missing required fields: {missing}')
+                  sys.exit(1)
+              print('Manifest validation passed')
+          except Exception as e:
+              print(f'Manifest validation failed: {e}')
+              sys.exit(1)
+          "
+
+      - name: Check version consistency
+        run: |
+          MANIFEST_VERSION=$(python -c "import json; print(json.load(open('custom_components/muller_intuitiv/manifest.json'))['version'])")
+          echo "Manifest version: $MANIFEST_VERSION"
+
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install memory-profiler
+
+      - name: Run performance tests
+        run: |
+          python -c "
+          import time
+          import sys
+          sys.path.append('.')
+
+          from custom_components.muller_intuitiv.device_manager import DeviceManager
+
+          # Test device manager performance with many devices
+          start_time = time.time()
+          manager = DeviceManager()
+
+          # Simulate 100 devices
+          devices = {}
+          for i in range(100):
+              devices[f'device_{i}'] = {
+                  'id': f'device_{i}',
+                  'name': f'Device {i}',
+                  'muller_type': 'FPN',
+                  'therm_measured_temperature': 20.0 + i * 0.1
+              }
+
+          # Update with devices
+          changes = manager.update_devices(devices)
+          print(f'Added {len(changes)} devices in {time.time() - start_time:.3f}s')
+
+          # Test modification performance
+          start_time = time.time()
+          for i in range(100):
+              devices[f'device_{i}']['therm_measured_temperature'] += 1.0
+
+          changes = manager.update_devices(devices)
+          print(f'Modified {len(changes)} devices in {time.time() - start_time:.3f}s')
+
+          stats = manager.get_statistics()
+          print(f'Final stats: {stats}')
+          "
+
+  documentation:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check README exists
+        run: |
+          if [ ! -f README.md ]; then
+            echo "README.md not found"
+            exit 1
+          fi
+
+      - name: Check CHANGELOG exists
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "CHANGELOG.md not found"
+            exit 1
+          fi
+
+      - name: Check docstring coverage
+        run: |
+          python -m pip install interrogate
+          interrogate custom_components/muller_intuitiv -v --ignore-init-method --ignore-magic --fail-under=80

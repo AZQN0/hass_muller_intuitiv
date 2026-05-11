@@ -2,6 +2,8 @@
 import logging
 from typing import Any, Dict, Optional, Union
 
+_LOGGER = logging.getLogger(__name__)
+
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
@@ -92,6 +94,21 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     def name(self) -> str:
         """Return the name of the entity."""
         return self._device_data.get("name", f"Heater {self.device_id}")
+
+    @property
+    def available(self) -> bool:
+        """Return True if device is available."""
+        # Check if device exists in coordinator data and is marked as available
+        device_exists = self.device_id in self.coordinator.data
+        device_available = self.coordinator.is_device_available(self.device_id)
+
+        available = device_exists and device_available
+
+        if not available:
+            _LOGGER.debug("Device %s availability: exists=%s, available=%s",
+                         self.device_id, device_exists, device_available)
+
+        return available
 
     @property
     def current_temperature(self) -> Optional[float]:
