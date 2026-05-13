@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-05-13 🐛 Critical Runtime Fix
+
+### 🚨 CRITICAL BUG FIX
+- **Fixed AttributeError in coordinator.py** - Resolved `self.config_entry` reference that should be `self.entry`
+- **Eliminates "Unexpected error fetching muller_intuitiv data"** runtime errors
+- **Restores Integration Functionality** - Integration now properly handles home_id refresh scenarios
+
+### 🔧 Technical Details
+- Error occurred at coordinator.py:140 during automatic home_id refresh process
+- Coordinator initialization stores config entry as `self.entry`, not `self.config_entry`
+- Fix ensures proper config entry updates during home_id recovery operations
+- No breaking changes - existing configurations work immediately after update
+
+### 📈 Impact
+- **Before**: Integration crashes with AttributeError during home_id refresh
+- **After**: Seamless home_id refresh and recovery without errors
+- **User Experience**: No more recurring error logs, stable integration operation
+
+This hotfix resolves the immediate runtime error that was preventing normal integration operation.
+
 ## [0.10.0] - 2026-05-11 🚀 MAJOR RELEASE - Professional Device Lifecycle Management
 
 ### 🎯 NEW FEATURES - Complete Device Lifecycle Management
