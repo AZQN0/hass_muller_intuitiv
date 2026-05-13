@@ -137,8 +137,8 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                             self.home_id = new_home_id
                             # Update config entry with new home_id
                             self.hass.config_entries.async_update_entry(
-                                self.config_entry,
-                                data={**self.config_entry.data, "home_id": new_home_id}
+                                self.entry,
+                                data={**self.entry.data, "home_id": new_home_id}
                             )
                             # Retry with new home_id
                             devices_data = await self.api.get_home_status(self.home_id)
