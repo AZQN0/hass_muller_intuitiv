@@ -5,18 +5,35 @@
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
 
-A Home Assistant custom integration for Muller Intuitiv heating systems. This integration allows you to monitor and control your Muller Intuitiv thermostats directly from Home Assistant.
+A **complete** Home Assistant custom integration for Muller Intuitiv heating systems. This integration exploits **ALL available API data** to provide rich, intuitive control and monitoring with room-based entity names and comprehensive system information.
 
 > **Acknowledgments**: This integration is inspired by the excellent work in the [Jeedom Muller Intuitiv plugin](https://github.com/shun84/jeedom-plugin-mullerintuitiv) by shun84. The API understanding and implementation patterns were adapted from that project.
 
-## Features
+## ✨ Features (v0.11.0)
 
-- 🌡️ **Climate Control**: Full thermostat control with temperature setting and preset modes
-- 📊 **Real-time Monitoring**: Current and target temperature readings
-- 🏠 **Multiple Rooms**: Support for multi-room heating systems
-- ⚡ **Preset Modes**: Home, Eco, and Manual temperature control
-- 🔄 **Automatic Token Refresh**: Seamless authentication management
-- 🪟 **Open Window Detection**: Monitor window status for each room
+### 🏠 **Intelligent Room-Based Entities**
+- **Meaningful Names**: `climate.chambre_quentin`, `climate.cuisine` instead of technical IDs
+- **Automatic Areas**: Home Assistant area suggestions from room names
+- **Room Types**: Bedroom, kitchen, office classification and integration
+- **Localized Interface**: Preserves French room names for authentic experience
+
+### 🌡️ **Complete Climate Control**
+- **Full Thermostat Control**: Temperature setting with preset modes (Home, Eco, Manual)
+- **Real-time Monitoring**: Current and target temperatures with status indicators
+- **Multi-room Support**: Automatic discovery and control of all heating zones
+- **Enhanced Attributes**: 15+ data points per climate entity including temporal info
+
+### 📊 **Comprehensive Sensor Suite**
+- **System Sensors**: Outdoor temperature (🌡️) and WiFi strength (📶) monitoring
+- **Per-Room Sensors**: Presence detection (👤), window status (🪟), boost control (🔥)
+- **Smart Icons**: Dynamic icons reflecting real-time status
+- **Diagnostic Information**: Complete system health and connectivity monitoring
+
+### 🔧 **Professional Device Management**
+- **Enhanced Device Registry**: Firmware versions, hardware info, proper hierarchy
+- **Automatic Token Refresh**: Seamless authentication with proactive refresh
+- **Error Recovery**: Intelligent home ID refresh and connection resilience
+- **Device Lifecycle**: Full device availability tracking and management
 
 ## Installation
 
@@ -106,9 +123,113 @@ automation:
 ### Lovelace Card Example
 
 ```yaml
+# Enhanced v0.11.0 example with room names
 type: thermostat
-entity: climate.muller_intuitiv_device_3347167131
-name: FPN Thermostat 7131
+entity: climate.chambre_quentin
+name: Chambre Quentin
+```
+
+## 📊 Entities Created (v0.11.0)
+
+### Climate Entities (Enhanced)
+```yaml
+# Room-based climate entities with meaningful names
+climate.chambre_quentin         # Chambre Quentin Thermostat
+climate.cuisine                 # Cuisine Thermostat
+climate.bureau                  # Bureau Thermostat
+```
+
+### System Sensors (NEW)
+```yaml
+sensor.outdoor_temperature      # External temperature (14.4°C)
+sensor.wifi_strength            # WiFi signal strength (71%)
+```
+
+### Per-Room Sensors (NEW)
+```yaml
+# Presence detection
+sensor.chambre_quentin_presence # Motion detection
+sensor.cuisine_presence         # Kitchen activity
+sensor.bureau_presence          # Office occupancy
+
+# Window status
+sensor.chambre_quentin_window   # Window open/closed
+sensor.cuisine_window          # Kitchen window state
+sensor.bureau_window           # Office window state
+
+# Boost control
+sensor.chambre_quentin_boost_status # Heating boost mode
+sensor.cuisine_boost_status        # Kitchen boost status
+sensor.bureau_boost_status         # Office boost status
+```
+
+### Enhanced Climate Attributes (NEW)
+```yaml
+# Example climate.chambre_quentin attributes
+room_name: "Chambre Quentin"
+room_type: "bedroom"
+device_id: "3755235792"
+room_id: "3755235792"
+muller_type: "FPN"
+muller_mode: "home"
+open_window: false
+presence: false
+boost_status: "disabled"
+setpoint_expires_at: "2026-05-13 15:30:00"  # NEW
+anticipating: false                          # NEW
+lowering: false                             # NEW
+pairing_status: "stop"                      # NEW
+reachable: true                             # NEW
+last_seen: "2026-05-13 14:25:30"           # NEW
+```
+
+### Device Registry Information (Enhanced)
+```yaml
+# Enhanced device information
+Device Name: "Chambre Quentin Thermostat"    # Instead of "FPN Thermostat 5792"
+Manufacturer: "Muller"
+Model: "Intuitiv FPN"
+Software Version: "Rev 185"                  # NEW firmware info
+Suggested Area: "Chambre Quentin"           # NEW auto area
+Via Device: "Muller Intuitiv System"
+```
+
+### Automation Examples with New Entities
+```yaml
+# Use presence detection for smart heating
+automation:
+  - alias: "Smart Heating - Bedroom Occupied"
+    trigger:
+      platform: state
+      entity_id: sensor.chambre_quentin_presence
+      to: "detected"
+    action:
+      service: climate.set_preset_mode
+      target:
+        entity_id: climate.chambre_quentin
+      data:
+        preset_mode: "home"
+
+  - alias: "Window Open - Reduce Heating"
+    trigger:
+      platform: state
+      entity_id: sensor.chambre_quentin_window
+      to: "open"
+    action:
+      service: climate.set_preset_mode
+      target:
+        entity_id: climate.chambre_quentin
+      data:
+        preset_mode: "eco"
+
+  - alias: "Outdoor Temperature Display"
+    trigger:
+      platform: state
+      entity_id: sensor.outdoor_temperature
+    action:
+      service: notify.mobile_app
+      data:
+        message: "Outdoor temperature: {{ states('sensor.outdoor_temperature') }}°C"
 ```
 
 ## Troubleshooting

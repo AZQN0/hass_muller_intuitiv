@@ -72,13 +72,34 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         _LOGGER.info("Initializing climate entity for device %s (type: %s, room_id: %s)",
                     device_id, muller_type, room_id)
 
+        # Get enhanced device information
+        room_name = device_data.get("room_name")
+        room_type = device_data.get("room_type")
+        has_temp_sensor = device_data.get("therm_measured_temperature") is not None
+
+        # Create enhanced device name
+        if room_name:
+            if has_temp_sensor:
+                device_name = f"{room_name} Thermostat"
+            else:
+                device_name = f"{room_name} Heater"
+        else:
+            device_name = f"Muller {muller_type} {device_id[-4:]}"
+
+        # Enhanced device info with room type and capabilities
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"device_{device_id}")},
-            name=f"Muller {muller_type} {device_id[-4:]}",
+            name=device_name,
             manufacturer="Muller",
             model=f"Intuitiv {muller_type}",
             via_device=(DOMAIN, f"home_{home_id}"),
+            suggested_area=room_name if room_name else None,
         )
+
+        # Add firmware info if available
+        firmware_info = device_data.get("firmware_info")
+        if firmware_info:
+            self._attr_device_info["sw_version"] = f"Rev {firmware_info.get('firmware_revision', 'Unknown')}"
 
     @property
     def _device_data(self) -> Dict[str, Any]:
@@ -93,6 +114,10 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     @property
     def name(self) -> str:
         """Return the name of the entity."""
+        # Use room name if available, otherwise fall back to device name
+        room_name = self._device_data.get("room_name")
+        if room_name:
+            return room_name
         return self._device_data.get("name", f"Heater {self.device_id}")
 
     @property
@@ -138,15 +163,52 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Return extra state attributes."""
         data = self._device_data
-        return {
+
+        # Base attributes
+        attrs = {
             "device_id": data.get("id"),
             "room_id": data.get("room_id"),
+            "room_name": data.get("room_name"),
+            "room_type": data.get("room_type"),
             "muller_type": data.get("muller_type"),
             "open_window": data.get("open_window", False),
             "muller_mode": data.get("therm_setpoint_mode"),
             "presence": data.get("presence", False),
-            "boost_status": data.get("boost_status")
+            "boost_status": data.get("boost_status"),
         }
+
+        # Enhanced temporal and status attributes
+        if "therm_setpoint_end_time" in data and data["therm_setpoint_end_time"]:
+            end_time = data["therm_setpoint_end_time"]
+            if end_time and end_time != 2147483647:  # Not permanent
+                import datetime
+                try:
+                    end_dt = datetime.datetime.fromtimestamp(end_time)
+                    attrs["setpoint_expires_at"] = end_dt.strftime("%Y-%m-%d %H:%M:%S")
+                except (ValueError, OSError):
+                    attrs["setpoint_expires_at"] = "Invalid time"
+            else:
+                attrs["setpoint_expires_at"] = "Permanent"
+
+        # Advanced status attributes
+        attrs.update({
+            "anticipating": data.get("anticipating", False),
+            "lowering": data.get("lowering", False),
+            "pairing_status": data.get("pairing"),
+        })
+
+        # System connectivity (if available)
+        if "reachable" in data:
+            attrs["reachable"] = data["reachable"]
+        if "last_seen" in data:
+            import datetime
+            try:
+                last_seen_dt = datetime.datetime.fromtimestamp(data["last_seen"])
+                attrs["last_seen"] = last_seen_dt.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, OSError):
+                attrs["last_seen"] = "Unknown"
+
+        return attrs
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""

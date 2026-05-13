@@ -159,6 +159,22 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
 
                 _LOGGER.info("Device status received: %d devices found", len(devices_data))
 
+                # Get system information (temperature extérieure, WiFi, firmware)
+                try:
+                    system_info = await self.api.get_home_system_info(self.home_id)
+                    _LOGGER.info("System info retrieved: outdoor_temp=%s°C, wifi=%s%%, modules=%d",
+                               system_info.get("outdoor_temperature"),
+                               system_info.get("wifi_strength"),
+                               len(system_info.get("modules", [])))
+                except Exception as err:
+                    _LOGGER.warning("Could not retrieve system info: %s", err)
+                    system_info = {
+                        "outdoor_temperature": None,
+                        "wifi_strength": None,
+                        "firmware_info": {},
+                        "modules": []
+                    }
+
                 # Log all device data for debugging
                 for i, device in enumerate(devices_data):
                     device_id = device.get("id")
@@ -194,22 +210,62 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         _LOGGER.warning("✗ Could not find room mapping for device %s", device_id)
                         _LOGGER.warning("Available device IDs in mapping: %s", list(device_to_room_map.keys()))
 
-                    # Create user-friendly names
+                    # Find room name and type from home structure
+                    room_name = None
+                    room_type = None
+                    for room in rooms_from_home:
+                        if str(room.get("id")) == str(device_id):
+                            room_name = room.get("name", "Unknown")
+                            room_type = room.get("type", "unknown")
+                            _LOGGER.debug("Found room info for device %s: name=%s, type=%s", device_id, room_name, room_type)
+                            break
+
+                    # Store room information in device data
+                    device["room_name"] = room_name
+                    device["room_type"] = room_type
+
+                    # Create user-friendly names using room names
                     short_id = device_id[-4:] if device_id else "XXXX"
 
-                    # Different naming based on device features
-                    if device.get("therm_measured_temperature") is not None:
-                        # Device with temperature sensor
-                        device_name = f"{muller_type} Thermostat {short_id}"
+                    if room_name:
+                        # Use room name as primary identifier
+                        if device.get("therm_measured_temperature") is not None:
+                            device_name = room_name  # Simple room name for thermostat
+                        else:
+                            device_name = f"{room_name} (Heater)"  # Distinguish heater-only devices
                     else:
-                        # Device without temperature sensor (relay/actuator only)
-                        device_name = f"{muller_type} Heater {short_id}"
+                        # Fallback to device type naming
+                        if device.get("therm_measured_temperature") is not None:
+                            device_name = f"{muller_type} Thermostat {short_id}"
+                        else:
+                            device_name = f"{muller_type} Heater {short_id}"
 
                     device["name"] = device_name
-                    _LOGGER.debug("Device %s assigned name: %s", device_id, device_name)
+                    _LOGGER.info("Device %s assigned name: '%s' (room: %s, type: %s)",
+                               device_id, device_name, room_name or "Unknown", room_type or "unknown")
+
+                # Add system information to a special device entry for global sensors
+                if system_info:
+                    system_device = {
+                        "id": "_system",
+                        "name": "Muller System",
+                        "muller_type": "System",
+                        "room_id": None,
+                        "room_name": "System",
+                        "room_type": "system",
+                        "outdoor_temperature": system_info.get("outdoor_temperature"),
+                        "wifi_strength": system_info.get("wifi_strength"),
+                        "firmware_info": system_info.get("firmware_info", {}),
+                        "modules": system_info.get("modules", []),
+                        "is_system_device": True
+                    }
+                    devices_data.append(system_device)
+                    _LOGGER.info("Added system device with outdoor_temp=%s°C, wifi=%s%%",
+                               system_info.get("outdoor_temperature"),
+                               system_info.get("wifi_strength"))
 
                 _LOGGER.info("Mapping summary: %d successful, %d failed out of %d total devices",
-                           successfully_mapped, failed_mappings, len(devices_data))
+                           successfully_mapped, failed_mappings, len(devices_data) - (1 if system_info else 0))
 
             except MullerIntuitivAuthError:
                 # If we still get auth error after checking expiration, try refresh once more

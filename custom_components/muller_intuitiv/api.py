@@ -197,6 +197,44 @@ class MullerIntuitivApi:
 
         return rooms
 
+    async def get_home_system_info(self, home_id: str) -> Dict[str, Any]:
+        """Fetch complete system information including modules and sensors."""
+        _LOGGER.debug("Fetching home system info for home_id: %s", home_id)
+        res = await self._post("/syncapi/v1/homestatus", json_data={"home_id": home_id})
+        home_data = res.get("body", {}).get("home", {})
+
+        # Extract useful system information
+        modules = home_data.get("modules", [])
+        system_info = {
+            "modules": modules,
+            "outdoor_temperature": None,
+            "wifi_strength": None,
+            "firmware_info": {}
+        }
+
+        # Find outdoor temperature and system info from modules
+        for module in modules:
+            module_type = module.get("type", "")
+            module_id = module.get("id", "")
+
+            # NMG modules often contain outdoor temperature and wifi info
+            if module_type == "NMG":
+                if "outdoor_temperature" in module:
+                    system_info["outdoor_temperature"] = module["outdoor_temperature"]
+                if "wifi_strength" in module:
+                    system_info["wifi_strength"] = module["wifi_strength"]
+                if "firmware_revision" in module:
+                    system_info["firmware_info"][module_id] = {
+                        "firmware_revision": module["firmware_revision"],
+                        "hardware_version": module.get("hardware_version"),
+                        "type": module_type,
+                        "uptime": module.get("uptime")
+                    }
+
+        _LOGGER.debug("System info extracted: outdoor_temp=%s, wifi=%s, modules=%d",
+                     system_info["outdoor_temperature"], system_info["wifi_strength"], len(modules))
+        return system_info
+
     async def set_room_mode(self, home_id: str, room_id: str, mode: str) -> None:
         """Set the mode for a specific room. (home, hg)."""
         _LOGGER.info("Setting room mode: home_id=%s, room_id=%s, mode=%s", home_id, room_id, mode)

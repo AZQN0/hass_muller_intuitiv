@@ -13,7 +13,7 @@ from .coordinator import MullerIntuitivDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.CLIMATE]
+PLATFORMS = [Platform.CLIMATE, Platform.SENSOR]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Muller Intuitiv from a config entry."""
@@ -34,7 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         manufacturer="Muller",
         name=entry.title or "Muller Intuitiv System",
         model="Intuitiv Hub",
-        sw_version="0.9.4",
+        sw_version="0.11.0",
     )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
