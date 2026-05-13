@@ -92,8 +92,13 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     _LOGGER.debug("Room %d: ID=%s, Name=%s, Modules=%d", i, room_id, room_name, len(modules))
 
                     for j, module in enumerate(modules):
-                        module_id = module.get("id")
-                        module_type = module.get("type", "Unknown")
+                        # Handle both string IDs and dictionary structures
+                        if isinstance(module, str):
+                            module_id = module
+                            module_type = "Unknown"
+                        else:
+                            module_id = module.get("id")
+                            module_type = module.get("type", "Unknown")
                         _LOGGER.debug("  Module %d: ID=%s, Type=%s", j, module_id, module_type)
 
                 # Create device-to-room mapping from home structure
@@ -104,7 +109,11 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                     room_name = room.get("name", "Unknown")
                     modules = room.get("modules", [])
                     for module in modules:
-                        device_id = module.get("id")
+                        # Handle both string IDs and dictionary structures
+                        if isinstance(module, str):
+                            device_id = module
+                        else:
+                            device_id = module.get("id")
                         if device_id:
                             # Store mapping with original ID
                             device_to_room_map[device_id] = room_id
@@ -235,7 +244,11 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         room_id = room.get("id")
                         modules = room.get("modules", [])
                         for module in modules:
-                            device_id = module.get("id")
+                            # Handle both string IDs and dictionary structures
+                            if isinstance(module, str):
+                                device_id = module
+                            else:
+                                device_id = module.get("id")
                             if device_id:
                                 # Store mapping with original ID
                                 device_to_room_map[device_id] = room_id

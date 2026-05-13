@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-05-13 🔧 Module Parsing Fix
+
+### 🐛 BUG FIX
+- **Fixed module parsing error** - Resolved AttributeError when API returns module IDs as strings instead of dictionaries
+- **Handles API data structure variations** - Now properly processes both string and object module formats
+- **Eliminates coordinator.py line 95 errors** - Fixes `'str' object has no attribute 'get'` runtime errors
+
+### 🔧 Technical Details
+- API sometimes returns `modules: ["00:00:00:00:02:13:f9:b7"]` (strings)
+- Code was expecting `modules: [{"id": "..."}]` (dictionaries)
+- Added isinstance() checks to handle both data formats gracefully
+- Applied fix to both main and emergency token refresh code paths
+
+### 📈 Impact
+- **Before**: Integration crashes with AttributeError on `module.get("id")`
+- **After**: Seamless handling of all API module data formats
+- **User Experience**: No more coordinator update errors, stable device discovery
+
+This resolves the remaining runtime error in the coordinator module.
+
 ## [0.10.1] - 2026-05-13 🐛 Critical Runtime Fix
 
 ### 🚨 CRITICAL BUG FIX
