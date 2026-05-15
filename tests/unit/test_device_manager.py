@@ -1,11 +1,13 @@
 """Unit tests for DeviceManager."""
-import pytest
+
 from unittest.mock import Mock, call
 
+import pytest
+
 from custom_components.muller_intuitiv.device_manager import (
+    DeviceChange,
     DeviceManager,
     DeviceState,
-    DeviceChange,
 )
 
 
@@ -43,13 +45,7 @@ class TestDeviceManager:
         initial_devices = {}
 
         # Add a device
-        new_devices = {
-            "device1": {
-                "id": "device1",
-                "name": "Test Device",
-                "muller_type": "FPN"
-            }
-        }
+        new_devices = {"device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}}
 
         changes = self.device_manager.update_devices(new_devices)
 
@@ -63,11 +59,7 @@ class TestDeviceManager:
         """Test detection of removed devices."""
         # Start with a device
         initial_devices = {
-            "device1": {
-                "id": "device1",
-                "name": "Test Device",
-                "muller_type": "FPN"
-            }
+            "device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}
         }
         self.device_manager.update_devices(initial_devices)
 
@@ -89,7 +81,7 @@ class TestDeviceManager:
                 "id": "device1",
                 "name": "Test Device",
                 "muller_type": "FPN",
-                "therm_measured_temperature": 20.0
+                "therm_measured_temperature": 20.0,
             }
         }
         self.device_manager.update_devices(initial_devices)
@@ -100,7 +92,7 @@ class TestDeviceManager:
                 "id": "device1",
                 "name": "Test Device",
                 "muller_type": "FPN",
-                "therm_measured_temperature": 22.0  # Changed temperature
+                "therm_measured_temperature": 22.0,  # Changed temperature
             }
         }
         changes = self.device_manager.update_devices(modified_devices)
@@ -118,7 +110,7 @@ class TestDeviceManager:
                 "id": "device1",
                 "name": "Test Device",
                 "muller_type": "FPN",
-                "therm_measured_temperature": 20.0
+                "therm_measured_temperature": 20.0,
             }
         }
 
@@ -148,13 +140,7 @@ class TestDeviceManager:
         callback = Mock()
         self.device_manager.register_change_callback(callback)
 
-        new_devices = {
-            "device1": {
-                "id": "device1",
-                "name": "Test Device",
-                "muller_type": "FPN"
-            }
-        }
+        new_devices = {"device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}}
 
         self.device_manager.update_devices(new_devices)
 
@@ -166,18 +152,13 @@ class TestDeviceManager:
 
     def test_callback_error_handling(self):
         """Test that callback errors don't break the update process."""
+
         def failing_callback(changes):
             raise Exception("Callback failed")
 
         self.device_manager.register_change_callback(failing_callback)
 
-        new_devices = {
-            "device1": {
-                "id": "device1",
-                "name": "Test Device",
-                "muller_type": "FPN"
-            }
-        }
+        new_devices = {"device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}}
 
         # Should not raise exception despite callback failure
         changes = self.device_manager.update_devices(new_devices)
@@ -186,13 +167,7 @@ class TestDeviceManager:
     def test_cleanup_removed_devices(self):
         """Test cleanup of removed devices."""
         device_id = "device1"
-        devices = {
-            device_id: {
-                "id": device_id,
-                "name": "Test Device",
-                "muller_type": "FPN"
-            }
-        }
+        devices = {device_id: {"id": device_id, "name": "Test Device", "muller_type": "FPN"}}
 
         # Add device
         self.device_manager.update_devices(devices)
@@ -221,13 +196,7 @@ class TestDeviceManager:
         assert stats["registered_callbacks"] == 0
 
         # Add a device and check stats
-        devices = {
-            "device1": {
-                "id": "device1",
-                "name": "Test Device",
-                "muller_type": "FPN"
-            }
-        }
+        devices = {"device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}}
         self.device_manager.update_devices(devices)
 
         stats = self.device_manager.get_statistics()
@@ -261,14 +230,18 @@ class TestDeviceManager:
         # Initial state: 2 devices
         initial_devices = {
             "device1": {"id": "device1", "name": "Device 1", "therm_measured_temperature": 20.0},
-            "device2": {"id": "device2", "name": "Device 2", "therm_measured_temperature": 21.0}
+            "device2": {"id": "device2", "name": "Device 2", "therm_measured_temperature": 21.0},
         }
         self.device_manager.update_devices(initial_devices)
 
         # New state: device1 modified, device2 removed, device3 added
         new_devices = {
-            "device1": {"id": "device1", "name": "Device 1 Updated", "therm_measured_temperature": 22.0},
-            "device3": {"id": "device3", "name": "Device 3", "therm_measured_temperature": 19.0}
+            "device1": {
+                "id": "device1",
+                "name": "Device 1 Updated",
+                "therm_measured_temperature": 22.0,
+            },
+            "device3": {"id": "device3", "name": "Device 3", "therm_measured_temperature": 19.0},
         }
         changes = self.device_manager.update_devices(new_devices)
 

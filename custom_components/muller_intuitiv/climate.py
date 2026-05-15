@@ -1,6 +1,7 @@
 """Climate platform for Muller Intuitiv."""
-from datetime import datetime
+
 import logging
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from homeassistant.components.climate import (
@@ -70,8 +71,12 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         muller_type = device_data.get("muller_type", "Unknown")
         room_id = device_data.get("room_id")
 
-        _LOGGER.info("Initializing climate entity for device %s (type: %s, room_id: %s)",
-                    device_id, muller_type, room_id)
+        _LOGGER.info(
+            "Initializing climate entity for device %s (type: %s, room_id: %s)",
+            device_id,
+            muller_type,
+            room_id,
+        )
 
         # Get enhanced device information
         room_name = device_data.get("room_name")
@@ -99,9 +104,9 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         # Add firmware info if available
         firmware_info = device_data.get("firmware_info")
         if firmware_info:
-            self._attr_device_info[
-                "sw_version"
-            ] = f"Rev {firmware_info.get('firmware_revision', 'Unknown')}"
+            self._attr_device_info["sw_version"] = (
+                f"Rev {firmware_info.get('firmware_revision', 'Unknown')}"
+            )
 
     @property
     def _device_data(self) -> Dict[str, Any]:
@@ -242,9 +247,7 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         )
 
         try:
-            await self.coordinator.api.set_room_temperature(
-                self.home_id, room_id, temperature
-            )
+            await self.coordinator.api.set_room_temperature(self.home_id, room_id, temperature)
             _LOGGER.info("Temperature change request completed for %s", self.name)
         except Exception as err:
             _LOGGER.error("Failed to set temperature for %s: %s", self.name, err)

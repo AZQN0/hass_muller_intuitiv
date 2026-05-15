@@ -8,27 +8,32 @@ import logging
 import sys
 import time
 from pathlib import Path
+
+import pytest
 from aiohttp import ClientSession, ClientTimeout
+
+pytestmark = pytest.mark.real_api
 
 # Add the custom component to the path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import the real constants and API
 try:
+    from custom_components.muller_intuitiv.api import (
+        MullerIntuitivApi,
+        MullerIntuitivApiError,
+        MullerIntuitivAuthError,
+        MullerIntuitivConnectionError,
+    )
     from custom_components.muller_intuitiv.const import (
         API_BASE_URL,
         CLIENT_ID,
         CLIENT_SECRET,
-        USER_PREFIX,
-        SCOPE,
         HTTP_TIMEOUT,
+        SCOPE,
+        USER_PREFIX,
     )
-    from custom_components.muller_intuitiv.api import (
-        MullerIntuitivApi,
-        MullerIntuitivAuthError,
-        MullerIntuitivConnectionError,
-        MullerIntuitivApiError,
-    )
+
     REAL_INTEGRATION = True
 except ImportError:
     # Fallback if we can't import the integration - use correct values from const.py
@@ -41,16 +46,21 @@ except ImportError:
 
     class MullerIntuitivAuthError(Exception):
         pass
+
     class MullerIntuitivConnectionError(Exception):
         pass
+
     class MullerIntuitivApiError(Exception):
         pass
 
     REAL_INTEGRATION = False
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 class RealApiTester:
     """Test the authentication fixes against the real API."""
@@ -77,6 +87,7 @@ class RealApiTester:
 
     def _create_fallback_api(self):
         """Create fallback API client if integration import failed."""
+
         class FallbackApi:
             def __init__(self, session):
                 self._session = session
@@ -126,7 +137,9 @@ class RealApiTester:
 
                     if response.status != 200:
                         if response.status == 400 and "invalid_grant" in response_text:
-                            raise MullerIntuitivAuthError("Refresh token expired - please re-authenticate")
+                            raise MullerIntuitivAuthError(
+                                "Refresh token expired - please re-authenticate"
+                            )
                         raise MullerIntuitivAuthError(f"Token refresh failed: {response_text}")
 
                     data = await response.json()
@@ -143,24 +156,32 @@ class RealApiTester:
                 headers = {
                     "Authorization": f"Bearer {self._token}",
                     "Accept": "application/json",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 }
 
-                async with self._session.post(url, headers=headers, timeout=self._timeout) as response:
+                async with self._session.post(
+                    url, headers=headers, timeout=self._timeout
+                ) as response:
                     response_text = await response.text()
 
                     if response.status == 401:
                         raise MullerIntuitivAuthError("Token expired")
                     elif response.status == 403:
                         # Provide detailed error info for 403
-                        raise MullerIntuitivApiError(f"API access forbidden (403). Response: {response_text[:200]}")
+                        raise MullerIntuitivApiError(
+                            f"API access forbidden (403). Response: {response_text[:200]}"
+                        )
                     elif response.status != 200:
-                        raise MullerIntuitivApiError(f"API error {response.status}: {response_text[:200]}")
+                        raise MullerIntuitivApiError(
+                            f"API error {response.status}: {response_text[:200]}"
+                        )
 
                     try:
                         data = await response.json()
                     except Exception:
-                        raise MullerIntuitivApiError(f"Invalid JSON response: {response_text[:200]}")
+                        raise MullerIntuitivApiError(
+                            f"Invalid JSON response: {response_text[:200]}"
+                        )
 
                     homes = data.get("body", {}).get("homes", [])
                     if not homes:
@@ -171,9 +192,9 @@ class RealApiTester:
 
     async def test_authentication_flow(self):
         """Test the complete authentication flow."""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🔐 REAL API AUTHENTICATION TEST")
-        print("="*80)
+        print("=" * 80)
         print(f"🌐 Testing against: {API_BASE_URL}")
         print(f"👤 Username: {self.username}")
         print(f"🔧 Using {'real integration' if REAL_INTEGRATION else 'fallback implementation'}")
@@ -231,14 +252,18 @@ class RealApiTester:
                 print(f"   ⏰ New expiry: {refresh_result['expires_in']} seconds")
 
                 # Check if tokens changed (some APIs might not rotate if still valid)
-                tokens_changed = (refresh_result["access_token"] != login_result["access_token"] or
-                                refresh_result["refresh_token"] != login_result["refresh_token"])
+                tokens_changed = (
+                    refresh_result["access_token"] != login_result["access_token"]
+                    or refresh_result["refresh_token"] != login_result["refresh_token"]
+                )
 
                 if tokens_changed:
                     print(f"   ✅ SUCCESS: Tokens were rotated")
                     results["refresh"] = "PASS"
                 elif "expires_in" in refresh_result and refresh_result["expires_in"] > 0:
-                    print(f"   ✅ SUCCESS: Token refresh worked (same tokens returned - still valid)")
+                    print(
+                        f"   ✅ SUCCESS: Token refresh worked (same tokens returned - still valid)"
+                    )
                     results["refresh"] = "PASS"
                 else:
                     print(f"   ❌ FAILED: Token refresh didn't work properly")
@@ -271,7 +296,7 @@ class RealApiTester:
                 print(f"   🏠 Home Name: {homes_data.get('name', 'N/A')}")
 
                 # Show some additional info if available
-                if 'rooms' in homes_data:
+                if "rooms" in homes_data:
                     print(f"   🚪 Rooms found: {len(homes_data['rooms'])}")
 
                 results["api_call"] = "PASS"
@@ -312,9 +337,9 @@ class RealApiTester:
 
     def print_summary(self, results):
         """Print test summary."""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("📊 REAL API TEST SUMMARY")
-        print("="*80)
+        print("=" * 80)
 
         status_icons = {
             "PASS": "✅",
@@ -324,14 +349,14 @@ class RealApiTester:
             "CONN_FAIL": "🌐❌",
             "API_FAIL": "📡❌",
             "SKIP": "⚠️",
-            "PARTIAL": "⚠️"
+            "PARTIAL": "⚠️",
         }
 
         test_descriptions = {
             "login": "Initial Login",
             "refresh": "Token Refresh",
             "api_call": "API Call with Token",
-            "invalid_refresh": "Invalid Token Handling"
+            "invalid_refresh": "Invalid Token Handling",
         }
 
         passed = 0
@@ -359,9 +384,13 @@ class RealApiTester:
         if results.get("login") == "PASS":
             print("✅ Your credentials are working correctly!")
             if results.get("refresh") == "PASS":
-                print("✅ Token refresh is working - the integration should handle expired tokens automatically")
+                print(
+                    "✅ Token refresh is working - the integration should handle expired tokens automatically"
+                )
             if results.get("api_call") == "PASS":
-                print("✅ API calls are working - you should be able to control your heating system")
+                print(
+                    "✅ API calls are working - you should be able to control your heating system"
+                )
         elif results.get("login") == "AUTH_FAIL":
             print("❌ Login failed - please check your username and password")
             print("   Try logging into the Muller Intuitiv mobile app to verify credentials")
@@ -378,7 +407,7 @@ class RealApiTester:
 async def main():
     """Main test function."""
     print("🔐 MULLER INTUITIV REAL API TESTER")
-    print("="*50)
+    print("=" * 50)
 
     # Get credentials
     print("\nPlease enter your Muller Intuitiv credentials:")
@@ -398,7 +427,9 @@ async def main():
         success = tester.print_summary(results)
 
     if success:
-        print(f"\n🎉 All tests passed! Your authentication fixes are working correctly with the real API.")
+        print(
+            f"\n🎉 All tests passed! Your authentication fixes are working correctly with the real API."
+        )
         print(f"   You can now use the integration with confidence.")
     else:
         print(f"\n⚠️ Some tests failed. Review the errors above to troubleshoot.")

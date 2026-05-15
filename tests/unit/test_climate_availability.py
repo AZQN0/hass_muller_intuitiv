@@ -1,6 +1,8 @@
 """Unit tests for climate entity availability."""
-import pytest
+
 from unittest.mock import Mock, patch
+
+import pytest
 
 from custom_components.muller_intuitiv.climate import MullerIntuitivClimate
 
@@ -17,7 +19,7 @@ def mock_coordinator():
             "therm_measured_temperature": 20.0,
             "therm_setpoint_temperature": 21.0,
             "therm_setpoint_mode": "manual",
-            "room_id": "room1"
+            "room_id": "room1",
         }
     }
     coordinator.is_device_available = Mock(return_value=True)
@@ -113,7 +115,9 @@ class TestClimateAvailability:
         assert climate_entity.unique_id == "muller_intuitiv_device_device1"
 
     @patch("custom_components.muller_intuitiv.climate._LOGGER")
-    def test_availability_logging_when_unavailable(self, mock_logger, climate_entity, mock_coordinator):
+    def test_availability_logging_when_unavailable(
+        self, mock_logger, climate_entity, mock_coordinator
+    ):
         """Test that unavailability is logged for debugging."""
         mock_coordinator.data = {}
         mock_coordinator.is_device_available.return_value = False
@@ -124,7 +128,12 @@ class TestClimateAvailability:
         assert available is False
         mock_logger.debug.assert_called_once()
         call_args = mock_logger.debug.call_args[0]
-        assert "Device device1 availability" in call_args[0]
+        assert call_args == (
+            "Device %s availability: exists=%s, available=%s",
+            "device1",
+            False,
+            False,
+        )
 
     @patch("custom_components.muller_intuitiv.climate._LOGGER")
     def test_no_logging_when_available(self, mock_logger, climate_entity, mock_coordinator):
@@ -155,7 +164,7 @@ class TestClimateAvailability:
         mock_coordinator.data["device1"] = {
             "id": "device1",
             "name": "Test Device Restored",
-            "therm_measured_temperature": 22.0
+            "therm_measured_temperature": 22.0,
         }
         mock_coordinator.is_device_available.return_value = True
         assert climate_entity.available is True
@@ -175,7 +184,7 @@ class TestClimateAvailability:
         # Setup multiple devices in coordinator
         mock_coordinator.data = {
             "device1": {"id": "device1", "name": "Device 1", "muller_type": "FPN"},
-            "device2": {"id": "device2", "name": "Device 2", "muller_type": "FPN"}
+            "device2": {"id": "device2", "name": "Device 2", "muller_type": "FPN"},
         }
 
         # Mock availability - device1 available, device2 unavailable
@@ -198,9 +207,7 @@ class TestClimateAvailability:
 
     def test_edge_case_empty_device_data(self, mock_coordinator):
         """Test handling of edge case with empty device data."""
-        mock_coordinator.data = {
-            "device1": {}  # Empty device data
-        }
+        mock_coordinator.data = {"device1": {}}  # Empty device data
         mock_coordinator.is_device_available.return_value = True
 
         entity = MullerIntuitivClimate(mock_coordinator, "device1", "home1")

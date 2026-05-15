@@ -1,16 +1,23 @@
 """Device lifecycle management for Muller Intuitiv integration."""
+
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
 from typing import Any, Callable, Dict, List, Optional
 
 _LOGGER = logging.getLogger(__name__)
 
 
+def _callback_name(callback: Callable[[List["DeviceChange"]], None]) -> str:
+    """Return a readable callback name for logging."""
+    return getattr(callback, "__name__", callback.__class__.__name__)
+
+
 class DeviceState(Enum):
     """Device state enumeration."""
+
     AVAILABLE = "available"
     UNAVAILABLE = "unavailable"
     REMOVED = "removed"
@@ -20,6 +27,7 @@ class DeviceState(Enum):
 @dataclass
 class DeviceChange:
     """Represents a device change event."""
+
     device_id: str
     change_type: str  # 'added', 'removed', 'modified'
     old_data: Optional[Dict[str, Any]] = None
@@ -38,13 +46,13 @@ class DeviceManager:
     def register_change_callback(self, callback: Callable[[List[DeviceChange]], None]) -> None:
         """Register a callback for device changes."""
         self._change_callbacks.append(callback)
-        _LOGGER.debug("Registered device change callback: %s", callback.__name__)
+        _LOGGER.debug("Registered device change callback: %s", _callback_name(callback))
 
     def unregister_change_callback(self, callback: Callable[[List[DeviceChange]], None]) -> None:
         """Unregister a callback for device changes."""
         if callback in self._change_callbacks:
             self._change_callbacks.remove(callback)
-            _LOGGER.debug("Unregistered device change callback: %s", callback.__name__)
+            _LOGGER.debug("Unregistered device change callback: %s", _callback_name(callback))
 
     def update_devices(self, new_devices: Dict[str, Dict[str, Any]]) -> List[DeviceChange]:
         """Update devices and detect changes."""
@@ -65,7 +73,11 @@ class DeviceManager:
                 try:
                     callback(changes)
                 except Exception as err:
-                    _LOGGER.error("Error in device change callback %s: %s", callback.__name__, err)
+                    _LOGGER.error(
+                        "Error in device change callback %s: %s",
+                        _callback_name(callback),
+                        err,
+                    )
 
         return changes
 
@@ -79,20 +91,20 @@ class DeviceManager:
         # Detect added devices
         added_ids = new_device_ids - old_device_ids
         for device_id in added_ids:
-            changes.append(DeviceChange(
-                device_id=device_id,
-                change_type="added",
-                new_data=new_devices[device_id]
-            ))
+            changes.append(
+                DeviceChange(
+                    device_id=device_id, change_type="added", new_data=new_devices[device_id]
+                )
+            )
 
         # Detect removed devices
         removed_ids = old_device_ids - new_device_ids
         for device_id in removed_ids:
-            changes.append(DeviceChange(
-                device_id=device_id,
-                change_type="removed",
-                old_data=self._devices[device_id]
-            ))
+            changes.append(
+                DeviceChange(
+                    device_id=device_id, change_type="removed", old_data=self._devices[device_id]
+                )
+            )
 
         # Detect modified devices
         common_ids = old_device_ids & new_device_ids
@@ -101,12 +113,14 @@ class DeviceManager:
             new_data = new_devices[device_id]
 
             if self._device_data_changed(old_data, new_data):
-                changes.append(DeviceChange(
-                    device_id=device_id,
-                    change_type="modified",
-                    old_data=old_data,
-                    new_data=new_data
-                ))
+                changes.append(
+                    DeviceChange(
+                        device_id=device_id,
+                        change_type="modified",
+                        old_data=old_data,
+                        new_data=new_data,
+                    )
+                )
 
         return changes
 
@@ -114,9 +128,14 @@ class DeviceManager:
         """Check if device data has meaningfully changed."""
         # Compare key fields that matter for Home Assistant
         key_fields = [
-            "name", "muller_type", "room_id",
-            "therm_measured_temperature", "therm_setpoint_temperature",
-            "therm_setpoint_mode", "heating", "boost_status"
+            "name",
+            "muller_type",
+            "room_id",
+            "therm_measured_temperature",
+            "therm_setpoint_temperature",
+            "therm_setpoint_mode",
+            "heating",
+            "boost_status",
         ]
 
         for field in key_fields:
@@ -124,8 +143,13 @@ class DeviceManager:
             new_val = new_data.get(field)
 
             if old_val != new_val:
-                _LOGGER.debug("Device %s field '%s' changed: %s -> %s",
-                            old_data.get("id", "unknown"), field, old_val, new_val)
+                _LOGGER.debug(
+                    "Device %s field '%s' changed: %s -> %s",
+                    old_data.get("id", "unknown"),
+                    field,
+                    old_val,
+                    new_val,
+                )
                 return True
 
         return False
@@ -190,5 +214,5 @@ class DeviceManager:
         return {
             "total_devices": len(self._devices),
             "device_states": states_count,
-            "registered_callbacks": len(self._change_callbacks)
+            "registered_callbacks": len(self._change_callbacks),
         }

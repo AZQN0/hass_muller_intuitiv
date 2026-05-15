@@ -1,4 +1,5 @@
 """Diagnostics support for Muller Intuitiv."""
+
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -7,7 +8,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, API_BASE_URL
+from .const import API_BASE_URL, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, DOMAIN
 
 # Keys to redact for privacy
 REDACT_KEYS = {
@@ -19,6 +20,7 @@ REDACT_KEYS = {
     "password",
     "id",
 }
+
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry

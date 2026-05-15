@@ -3,13 +3,13 @@
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import MullerIntuitivApi
-from .const import DOMAIN, CONF_ACCESS_TOKEN
+from .const import CONF_ACCESS_TOKEN, DOMAIN
 from .coordinator import MullerIntuitivDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)

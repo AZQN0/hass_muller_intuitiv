@@ -1,21 +1,14 @@
 """DataUpdateCoordinator for Muller Intuitiv."""
 
 import logging
-from datetime import timedelta
 import time
-from typing import Dict, List, Any
+from datetime import timedelta
+from typing import Any, Dict, List
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import MullerIntuitivApi
-from .device_manager import DeviceManager, DeviceChange
-from .exceptions import (
-    MullerIntuitivAuthError,
-    MullerIntuitivApiError,
-    MullerIntuitivTimeoutError,
-    MullerIntuitivConnectionError,
-)
 from .const import (
     CONF_ACCESS_TOKEN,
     CONF_EXPIRES_AT,
@@ -24,6 +17,13 @@ from .const import (
     CONF_REFRESH_TOKEN,
     DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
+)
+from .device_manager import DeviceChange, DeviceManager
+from .exceptions import (
+    MullerIntuitivApiError,
+    MullerIntuitivAuthError,
+    MullerIntuitivConnectionError,
+    MullerIntuitivTimeoutError,
 )
 
 _LOGGER = logging.getLogger(__name__)

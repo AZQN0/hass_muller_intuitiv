@@ -7,7 +7,8 @@ import logging
 import sys
 import time
 from pathlib import Path
-from aiohttp import web, ClientSession, ClientTimeout
+
+from aiohttp import ClientSession, ClientTimeout, web
 from aiohttp.web_runner import AppRunner, TCPSite
 
 # Add the custom component to the path
@@ -22,14 +23,17 @@ SCOPE = "test_scope"
 HTTP_TIMEOUT = 30
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(name)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class MullerIntuitivAuthError(Exception):
     """Exception for authentication errors."""
 
+
 class MullerIntuitivConnectionError(Exception):
     """Exception for connection errors."""
+
 
 class MullerIntuitivApi:
     """Minimal API client for testing."""
@@ -63,7 +67,9 @@ class MullerIntuitivApi:
                 response_text = await response.text()
 
                 if response.status != 200:
-                    logger.error("Authentication failed (status %d): %s", response.status, response_text)
+                    logger.error(
+                        "Authentication failed (status %d): %s", response.status, response_text
+                    )
 
                     if response.status == 400:
                         if "invalid_grant" in response_text:
@@ -75,7 +81,9 @@ class MullerIntuitivApi:
                     elif response.status == 401:
                         raise MullerIntuitivAuthError("Unauthorized - invalid credentials")
                     else:
-                        raise MullerIntuitivAuthError(f"Authentication failed with status {response.status}")
+                        raise MullerIntuitivAuthError(
+                            f"Authentication failed with status {response.status}"
+                        )
 
                 data = await response.json()
                 self._token = data.get("access_token")
@@ -94,7 +102,9 @@ class MullerIntuitivApi:
             if isinstance(err, MullerIntuitivAuthError):
                 raise
             logger.error("Network error during authentication: %s", err)
-            raise MullerIntuitivConnectionError(f"Network error during authentication: {err}") from err
+            raise MullerIntuitivConnectionError(
+                f"Network error during authentication: {err}"
+            ) from err
 
     async def refresh_token(self, refresh_token: str) -> dict:
         """Refresh the access token."""
@@ -113,19 +123,27 @@ class MullerIntuitivApi:
                 response_text = await response.text()
 
                 if response.status != 200:
-                    logger.error("Token refresh failed (status %d): %s", response.status, response_text)
+                    logger.error(
+                        "Token refresh failed (status %d): %s", response.status, response_text
+                    )
 
                     if response.status == 400:
                         if "invalid_grant" in response_text:
-                            raise MullerIntuitivAuthError("Refresh token expired - please re-authenticate")
+                            raise MullerIntuitivAuthError(
+                                "Refresh token expired - please re-authenticate"
+                            )
                         elif "invalid_client" in response_text:
-                            raise MullerIntuitivAuthError("Client authentication failed during token refresh")
+                            raise MullerIntuitivAuthError(
+                                "Client authentication failed during token refresh"
+                            )
                         else:
                             raise MullerIntuitivAuthError("Bad request during token refresh")
                     elif response.status == 401:
                         raise MullerIntuitivAuthError("Unauthorized - refresh token invalid")
                     else:
-                        raise MullerIntuitivAuthError(f"Token refresh failed with status {response.status}")
+                        raise MullerIntuitivAuthError(
+                            f"Token refresh failed with status {response.status}"
+                        )
 
                 data = await response.json()
                 self._token = data.get("access_token")
@@ -137,14 +155,18 @@ class MullerIntuitivApi:
                 expires_in = data.get("expires_in", 3600)
                 data["expires_at"] = int(time.time()) + expires_in
 
-                logger.debug("Token refresh successful, new token expires in %d seconds", expires_in)
+                logger.debug(
+                    "Token refresh successful, new token expires in %d seconds", expires_in
+                )
                 return data
 
         except Exception as err:
             if isinstance(err, MullerIntuitivAuthError):
                 raise
             logger.error("Network error during token refresh: %s", err)
-            raise MullerIntuitivConnectionError(f"Network error during token refresh: {err}") from err
+            raise MullerIntuitivConnectionError(
+                f"Network error during token refresh: {err}"
+            ) from err
 
 
 class MockAPIServer:
@@ -168,7 +190,7 @@ class MockAPIServer:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "unsupported_grant_type"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
     async def _handle_password_grant(self, data):
@@ -176,11 +198,14 @@ class MockAPIServer:
         username = data.get("username")
         password = data.get("password")
 
-        if username != self.valid_credentials["username"] or password != self.valid_credentials["password"]:
+        if (
+            username != self.valid_credentials["username"]
+            or password != self.valid_credentials["password"]
+        ):
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         self.token_counter += 1
@@ -189,18 +214,20 @@ class MockAPIServer:
 
         self.issued_tokens[access_token] = {
             "refresh_token": refresh_token,
-            "issued_at": int(time.time())
+            "issued_at": int(time.time()),
         }
 
         return web.Response(
             status=200,
-            text=json.dumps({
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "expires_in": 3600,
-                "token_type": "Bearer"
-            }),
-            content_type="application/json"
+            text=json.dumps(
+                {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "expires_in": 3600,
+                    "token_type": "Bearer",
+                }
+            ),
+            content_type="application/json",
         )
 
     async def _handle_refresh_token(self, data):
@@ -212,14 +239,14 @@ class MockAPIServer:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         if refresh_token == "invalid_refresh_token":
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         # Check if it's a valid refresh token we issued
@@ -232,7 +259,7 @@ class MockAPIServer:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         # Generate new tokens
@@ -242,26 +269,28 @@ class MockAPIServer:
 
         self.issued_tokens[access_token] = {
             "refresh_token": new_refresh_token,
-            "issued_at": int(time.time())
+            "issued_at": int(time.time()),
         }
 
         return web.Response(
             status=200,
-            text=json.dumps({
-                "access_token": access_token,
-                "refresh_token": new_refresh_token,
-                "expires_in": 3600,
-                "token_type": "Bearer"
-            }),
-            content_type="application/json"
+            text=json.dumps(
+                {
+                    "access_token": access_token,
+                    "refresh_token": new_refresh_token,
+                    "expires_in": 3600,
+                    "token_type": "Bearer",
+                }
+            ),
+            content_type="application/json",
         )
 
 
 async def run_auth_tests():
     """Run comprehensive authentication tests."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("🔐 AUTHENTICATION INTEGRATION TEST")
-    print("="*80)
+    print("=" * 80)
 
     # Start mock server
     mock_api = MockAPIServer()
@@ -270,7 +299,7 @@ async def run_auth_tests():
 
     runner = AppRunner(app)
     await runner.setup()
-    site = TCPSite(runner, 'localhost', 8080)
+    site = TCPSite(runner, "localhost", 8080)
     await site.start()
 
     print("🚀 Mock API server started on http://localhost:8080")
@@ -320,8 +349,10 @@ async def run_auth_tests():
                 print(f"   ✅ SUCCESS: New access token: {refresh_result['access_token'][:15]}...")
                 print(f"   ✅ New refresh token: {refresh_result['refresh_token'][:15]}...")
                 # Verify tokens are different
-                if (refresh_result["access_token"] != login_result["access_token"] and
-                    refresh_result["refresh_token"] != login_result["refresh_token"]):
+                if (
+                    refresh_result["access_token"] != login_result["access_token"]
+                    and refresh_result["refresh_token"] != login_result["refresh_token"]
+                ):
                     print("   ✅ SUCCESS: Tokens are properly rotated")
                     results["valid_refresh"] = "PASS"
                 else:
@@ -402,9 +433,9 @@ async def run_auth_tests():
         await runner.cleanup()
 
     # Print summary
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("📊 TEST RESULTS SUMMARY")
-    print("="*80)
+    print("=" * 80)
 
     passed = sum(1 for result in results.values() if result == "PASS")
     total = len(results)

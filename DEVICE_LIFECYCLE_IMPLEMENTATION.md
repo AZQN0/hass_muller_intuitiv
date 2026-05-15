@@ -51,6 +51,9 @@ tests/                             # 🆕 Suite de tests complète
 │   └── test_climate_availability.py
 ├── integration/
 │   └── test_device_lifecycle.py
+├── components/
+│   └── muller_intuitiv/
+│       └── test_config_flow.py
 └── __init__.py
 
 .github/workflows/
@@ -60,8 +63,8 @@ Configuration qualité:             # 🆕 Outils de développement
 ├── pyproject.toml
 ├── pytest.ini
 ├── requirements-dev.txt
-├── run_basic_checks.py
-└── test_device_manager_standalone.py
+├── TESTING.md
+└── scripts/test_ha_core.py
 ```
 
 ## 🔧 **Changements Techniques Détaillés**

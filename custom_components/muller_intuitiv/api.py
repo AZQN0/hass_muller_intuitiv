@@ -1,7 +1,8 @@
-import aiohttp
 import logging
 import time
 from typing import Any, Dict, List, Optional
+
+import aiohttp
 
 from .const import (
     API_BASE_URL,
@@ -82,9 +83,7 @@ class MullerIntuitivApi:
         if refreshing:
             if status == 400:
                 if "invalid_grant" in response_text:
-                    return MullerIntuitivAuthError(
-                        "Refresh token expired - please re-authenticate"
-                    )
+                    return MullerIntuitivAuthError("Refresh token expired - please re-authenticate")
                 if "invalid_client" in response_text:
                     return MullerIntuitivAuthError(
                         "Client authentication failed during token refresh"

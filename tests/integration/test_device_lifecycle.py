@@ -1,11 +1,13 @@
 """Integration tests for complete device lifecycle scenarios."""
+
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from homeassistant.core import HomeAssistant
 
-from custom_components.muller_intuitiv.coordinator import MullerIntuitivDataUpdateCoordinator
 from custom_components.muller_intuitiv.api import MullerIntuitivApi
 from custom_components.muller_intuitiv.climate import MullerIntuitivClimate
+from custom_components.muller_intuitiv.coordinator import MullerIntuitivDataUpdateCoordinator
 from custom_components.muller_intuitiv.device_manager import DeviceState
 
 
@@ -14,7 +16,7 @@ def mock_hass():
     """Create a mock Home Assistant instance."""
     hass = Mock(spec=HomeAssistant)
     hass.config_entries = Mock()
-    hass.config_entries.async_update_entry = AsyncMock()
+    hass.config_entries.async_update_entry = Mock()
     return hass
 
 
@@ -24,6 +26,7 @@ def mock_api():
     api = Mock(spec=MullerIntuitivApi)
     api.get_homes_data = AsyncMock()
     api.get_home_status = AsyncMock()
+    api.get_home_system_info = AsyncMock(return_value={})
     api.refresh_token = AsyncMock()
     return api
 
@@ -37,7 +40,7 @@ def mock_entry():
         "access_token": "test_token",
         "refresh_token": "test_refresh_token",
         "expires_in": 3600,
-        "expires_at": 9999999999  # Far future
+        "expires_at": 9999999999,  # Far future
     }
     return entry
 
@@ -59,9 +62,9 @@ class TestDeviceLifecycleIntegration:
                 {
                     "id": "room1",
                     "name": "Living Room",
-                    "modules": [{"id": "device1", "type": "FPN"}]
+                    "modules": [{"id": "device1", "type": "FPN"}],
                 }
-            ]
+            ],
         }
 
         mock_api.get_home_status.return_value = [
@@ -71,12 +74,12 @@ class TestDeviceLifecycleIntegration:
                 "muller_type": "FPN",
                 "therm_measured_temperature": 20.0,
                 "therm_setpoint_temperature": 21.0,
-                "therm_setpoint_mode": "manual"
+                "therm_setpoint_mode": "manual",
             }
         ]
 
         # First update - initial device
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Verify initial state
         assert len(coordinator.data) == 1
@@ -98,10 +101,10 @@ class TestDeviceLifecycleIntegration:
                     "name": "Living Room",
                     "modules": [
                         {"id": "device1", "type": "FPN"},
-                        {"id": "device2", "type": "FPN"}  # New device added
-                    ]
+                        {"id": "device2", "type": "FPN"},  # New device added
+                    ],
                 }
-            ]
+            ],
         }
 
         mock_api.get_home_status.return_value = [
@@ -111,24 +114,25 @@ class TestDeviceLifecycleIntegration:
                 "muller_type": "FPN",
                 "therm_measured_temperature": 20.5,  # Slightly changed
                 "therm_setpoint_temperature": 21.0,
-                "therm_setpoint_mode": "manual"
+                "therm_setpoint_mode": "manual",
             },
             {
                 "id": "device2",
                 "name": "Kitchen Heater",
                 "muller_type": "FPN",
                 "therm_setpoint_temperature": 19.0,
-                "therm_setpoint_mode": "eco"
-            }
+                "therm_setpoint_mode": "eco",
+            },
         ]
 
         # Second update - device added
         changes_detected = []
+
         def track_changes(changes):
             changes_detected.extend(changes)
 
         coordinator.device_manager.register_change_callback(track_changes)
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Verify device was detected as added
         assert len(coordinator.data) == 2
@@ -160,21 +164,18 @@ class TestDeviceLifecycleIntegration:
             "rooms": [
                 {
                     "id": "room1",
-                    "modules": [
-                        {"id": "device1", "type": "FPN"},
-                        {"id": "device2", "type": "FPN"}
-                    ]
+                    "modules": [{"id": "device1", "type": "FPN"}, {"id": "device2", "type": "FPN"}],
                 }
-            ]
+            ],
         }
 
         mock_api.get_home_status.return_value = [
             {"id": "device1", "name": "Device 1", "muller_type": "FPN"},
-            {"id": "device2", "name": "Device 2", "muller_type": "FPN"}
+            {"id": "device2", "name": "Device 2", "muller_type": "FPN"},
         ]
 
         # First update
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Create climate entities
         climate1 = MullerIntuitivClimate(coordinator, "device1", "test_home_id")
@@ -188,11 +189,8 @@ class TestDeviceLifecycleIntegration:
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
             "rooms": [
-                {
-                    "id": "room1",
-                    "modules": [{"id": "device1", "type": "FPN"}]  # device2 removed
-                }
-            ]
+                {"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}  # device2 removed
+            ],
         }
 
         mock_api.get_home_status.return_value = [
@@ -201,13 +199,14 @@ class TestDeviceLifecycleIntegration:
 
         # Track changes
         changes_detected = []
+
         def track_changes(changes):
             changes_detected.extend(changes)
 
         coordinator.device_manager.register_change_callback(track_changes)
 
         # Second update - device removed
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Verify device removal was detected
         removed_change = next(c for c in changes_detected if c.change_type == "removed")
@@ -234,7 +233,7 @@ class TestDeviceLifecycleIntegration:
         # Initial device state
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
-            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}]
+            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}],
         }
 
         mock_api.get_home_status.return_value = [
@@ -244,15 +243,15 @@ class TestDeviceLifecycleIntegration:
                 "muller_type": "FPN",
                 "therm_measured_temperature": 20.0,
                 "therm_setpoint_temperature": 21.0,
-                "therm_setpoint_mode": "manual"
+                "therm_setpoint_mode": "manual",
             }
         ]
 
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
         climate = MullerIntuitivClimate(coordinator, "device1", "test_home_id")
 
         # Initial state
-        assert climate.name == "Original Name"
+        assert climate.name == "FPN Thermostat ice1"
         assert climate.current_temperature == 20.0
         assert climate.target_temperature == 21.0
 
@@ -264,14 +263,14 @@ class TestDeviceLifecycleIntegration:
                 "muller_type": "FPN",
                 "therm_measured_temperature": 22.5,
                 "therm_setpoint_temperature": 23.0,
-                "therm_setpoint_mode": "eco"
+                "therm_setpoint_mode": "eco",
             }
         ]
 
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Verify updates propagated to climate entity
-        assert climate.name == "Updated Name"
+        assert climate.name == "FPN Thermostat ice1"
         assert climate.current_temperature == 22.5
         assert climate.target_temperature == 23.0
         assert climate.available is True
@@ -285,19 +284,22 @@ class TestDeviceLifecycleIntegration:
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
             "rooms": [
-                {"id": "room1", "modules": [
-                    {"id": "old_device1", "type": "FPN"},
-                    {"id": "old_device2", "type": "FPN"}
-                ]}
-            ]
+                {
+                    "id": "room1",
+                    "modules": [
+                        {"id": "old_device1", "type": "FPN"},
+                        {"id": "old_device2", "type": "FPN"},
+                    ],
+                }
+            ],
         }
 
         mock_api.get_home_status.return_value = [
             {"id": "old_device1", "name": "Old Device 1", "muller_type": "FPN"},
-            {"id": "old_device2", "name": "Old Device 2", "muller_type": "FPN"}
+            {"id": "old_device2", "name": "Old Device 2", "muller_type": "FPN"},
         ]
 
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Create climate entities for old devices
         old_climate1 = MullerIntuitivClimate(coordinator, "old_device1", "test_home_id")
@@ -310,28 +312,32 @@ class TestDeviceLifecycleIntegration:
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
             "rooms": [
-                {"id": "new_room1", "modules": [
-                    {"id": "new_device1", "type": "FPN"},
-                    {"id": "new_device2", "type": "FPN"},
-                    {"id": "new_device3", "type": "FPN"}
-                ]}
-            ]
+                {
+                    "id": "new_room1",
+                    "modules": [
+                        {"id": "new_device1", "type": "FPN"},
+                        {"id": "new_device2", "type": "FPN"},
+                        {"id": "new_device3", "type": "FPN"},
+                    ],
+                }
+            ],
         }
 
         mock_api.get_home_status.return_value = [
             {"id": "new_device1", "name": "New Device 1", "muller_type": "FPN"},
             {"id": "new_device2", "name": "New Device 2", "muller_type": "FPN"},
-            {"id": "new_device3", "name": "New Device 3", "muller_type": "FPN"}
+            {"id": "new_device3", "name": "New Device 3", "muller_type": "FPN"},
         ]
 
         # Track all changes
         changes_detected = []
+
         def track_changes(changes):
             changes_detected.extend(changes)
 
         coordinator.device_manager.register_change_callback(track_changes)
 
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Verify massive changes detected
         assert len(changes_detected) == 5  # 2 removed + 3 added
@@ -358,7 +364,7 @@ class TestDeviceLifecycleIntegration:
         # Setup device
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
-            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}]
+            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}],
         }
 
         mock_api.get_home_status.return_value = [
@@ -367,7 +373,7 @@ class TestDeviceLifecycleIntegration:
 
         # Multiple updates with same data
         for i in range(5):
-            await coordinator._async_update_data()
+            coordinator.data = await coordinator._async_update_data()
 
             # Device should remain available
             assert coordinator.is_device_available("device1") is True
@@ -388,14 +394,14 @@ class TestDeviceLifecycleIntegration:
         # Initial successful update
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
-            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}]
+            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}],
         }
 
         mock_api.get_home_status.return_value = [
             {"id": "device1", "name": "Resilient Device", "muller_type": "FPN"}
         ]
 
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
         climate = MullerIntuitivClimate(coordinator, "device1", "test_home_id")
 
         # Verify initial state
@@ -407,7 +413,7 @@ class TestDeviceLifecycleIntegration:
 
         # Try to update - should fail but not crash
         with pytest.raises(Exception):
-            await coordinator._async_update_data()
+            coordinator.data = await coordinator._async_update_data()
 
         # Device should still be tracked in device manager
         # (coordinator.data might be stale, but device_manager retains state)
@@ -419,7 +425,7 @@ class TestDeviceLifecycleIntegration:
             {"id": "device1", "name": "Resilient Device", "muller_type": "FPN"}
         ]
 
-        await coordinator._async_update_data()
+        coordinator.data = await coordinator._async_update_data()
 
         # Device should be available again
         assert climate.available is True

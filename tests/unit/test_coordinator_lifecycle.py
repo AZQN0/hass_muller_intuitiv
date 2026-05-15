@@ -1,11 +1,12 @@
 """Unit tests for coordinator device lifecycle management."""
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.muller_intuitiv.coordinator import MullerIntuitivDataUpdateCoordinator
 from custom_components.muller_intuitiv.api import MullerIntuitivApi
+from custom_components.muller_intuitiv.coordinator import MullerIntuitivDataUpdateCoordinator
 from custom_components.muller_intuitiv.device_manager import DeviceChange, DeviceState
 from custom_components.muller_intuitiv.exceptions import MullerIntuitivApiError
 
@@ -15,7 +16,7 @@ def mock_hass():
     """Create a mock Home Assistant instance."""
     hass = Mock()
     hass.config_entries = Mock()
-    hass.config_entries.async_update_entry = AsyncMock()
+    hass.config_entries.async_update_entry = Mock()
     return hass
 
 

@@ -302,6 +302,16 @@ This integration works with Muller Intuitiv heating systems that are compatible 
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Development
+
+This integration targets Home Assistant `2026.5.1`. Use Python `3.14.2+` for
+local validation and see [TESTING.md](TESTING.md) for the full workflow.
+
+Fast offline tests live under `tests/unit/` and `tests/integration/`. Home
+Assistant Core fixture tests live under `tests/components/muller_intuitiv/` and
+can be run through `scripts/test_ha_core.py` against a matching Core checkout.
+Real cloud checks must stay opt-in through the `real_api` pytest marker.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

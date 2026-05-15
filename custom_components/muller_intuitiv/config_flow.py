@@ -1,4 +1,5 @@
 """Config flow for Muller Intuitiv integration."""
+
 import logging
 from typing import Any, Dict, Optional
 

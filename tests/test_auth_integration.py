@@ -1,14 +1,19 @@
 """Integration test for authentication fixes."""
+
 import asyncio
 import json
 import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
-from aiohttp import web, ClientSession
+
+import pytest
+from aiohttp import ClientSession, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+
+pytestmark = pytest.mark.enable_socket
 
 # Add the custom component to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "custom_components"))
@@ -52,7 +57,7 @@ class MockMullerAPI:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "unsupported_grant_type"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
     async def _handle_password_grant(self, data):
@@ -63,12 +68,15 @@ class MockMullerAPI:
         logger.info(f"Password grant attempt: username={username}")
 
         # Simulate invalid credentials
-        if username != self.valid_credentials["username"] or password != self.valid_credentials["password"]:
+        if (
+            username != self.valid_credentials["username"]
+            or password != self.valid_credentials["password"]
+        ):
             logger.error(f"Invalid credentials: {username}")
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         # Generate tokens
@@ -78,21 +86,19 @@ class MockMullerAPI:
 
         self.issued_tokens[access_token] = {
             "refresh_token": refresh_token,
-            "issued_at": int(time.time())
+            "issued_at": int(time.time()),
         }
 
         response_data = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "expires_in": 3600,
-            "token_type": "Bearer"
+            "token_type": "Bearer",
         }
 
         logger.info(f"Password grant successful: token={access_token[:10]}...")
         return web.Response(
-            status=200,
-            text=json.dumps(response_data),
-            content_type="application/json"
+            status=200, text=json.dumps(response_data), content_type="application/json"
         )
 
     async def _handle_refresh_token(self, data):
@@ -107,7 +113,7 @@ class MockMullerAPI:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         # Simulate invalid refresh token
@@ -116,7 +122,7 @@ class MockMullerAPI:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         # Check if it's a valid refresh token we issued
@@ -131,7 +137,7 @@ class MockMullerAPI:
             return web.Response(
                 status=400,
                 text=json.dumps({"error": "invalid_grant"}),
-                content_type="application/json"
+                content_type="application/json",
             )
 
         # Generate new tokens
@@ -141,36 +147,27 @@ class MockMullerAPI:
 
         self.issued_tokens[access_token] = {
             "refresh_token": new_refresh_token,
-            "issued_at": int(time.time())
+            "issued_at": int(time.time()),
         }
 
         response_data = {
             "access_token": access_token,
             "refresh_token": new_refresh_token,
             "expires_in": 3600,
-            "token_type": "Bearer"
+            "token_type": "Bearer",
         }
 
         logger.info(f"Refresh token successful: token={access_token[:10]}...")
         return web.Response(
-            status=200,
-            text=json.dumps(response_data),
-            content_type="application/json"
+            status=200, text=json.dumps(response_data), content_type="application/json"
         )
 
     async def api_homesdata(self, request):
         """Mock homes data endpoint."""
         return web.Response(
             status=200,
-            text=json.dumps({
-                "body": {
-                    "homes": [{
-                        "id": "test_home_id",
-                        "name": "Test Home"
-                    }]
-                }
-            }),
-            content_type="application/json"
+            text=json.dumps({"body": {"homes": [{"id": "test_home_id", "name": "Test Home"}]}}),
+            content_type="application/json",
         )
 
 
@@ -193,17 +190,19 @@ class AuthIntegrationTest(AioHTTPTestCase):
         api = MullerIntuitivApi(session)
         # Monkey patch the API_BASE_URL
         import muller_intuitiv.api as api_module
+
         self.original_base_url = api_module.API_BASE_URL
         api_module.API_BASE_URL = f"http://{self.server.host}:{self.server.port}"
         return api
 
-    async def tearDown(self):
+    async def asyncTearDown(self):
         """Clean up after tests."""
         # Restore original API URL
-        if hasattr(self, 'original_base_url'):
+        if hasattr(self, "original_base_url"):
             import muller_intuitiv.api as api_module
+
             api_module.API_BASE_URL = self.original_base_url
-        await super().tearDown()
+        await super().asyncTearDown()
 
     @unittest_run_loop
     async def test_successful_authentication(self):
@@ -314,6 +313,7 @@ class AuthIntegrationTest(AioHTTPTestCase):
 
         # Override with invalid URL
         import muller_intuitiv.api as api_module
+
         api_module.API_BASE_URL = "http://nonexistent.invalid"
 
         try:
@@ -331,9 +331,9 @@ class AuthIntegrationTest(AioHTTPTestCase):
 
 async def run_manual_test():
     """Run a manual test to demonstrate the authentication fixes."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("🧪 MANUAL AUTHENTICATION TEST")
-    print("="*60)
+    print("=" * 60)
 
     # Start a mock server
     mock_api = MockMullerAPI()
@@ -344,7 +344,7 @@ async def run_manual_test():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 8080)
+    site = web.TCPSite(runner, "localhost", 8080)
     await site.start()
 
     print("🚀 Mock API server started on http://localhost:8080")
@@ -355,6 +355,7 @@ async def run_manual_test():
 
         # Override API base URL
         import muller_intuitiv.api as api_module
+
         original_url = api_module.API_BASE_URL
         api_module.API_BASE_URL = "http://localhost:8080"
 
@@ -370,7 +371,9 @@ async def run_manual_test():
             # Test token refresh with valid token
             print("\n2️⃣ Testing valid token refresh...")
             refresh_result = await api.refresh_token(result["refresh_token"])
-            print(f"   ✅ SUCCESS: Refreshed to new token: {refresh_result['access_token'][:20]}...")
+            print(
+                f"   ✅ SUCCESS: Refreshed to new token: {refresh_result['access_token'][:20]}..."
+            )
 
         except Exception as e:
             print(f"   ❌ FAILED: {e}")
@@ -405,9 +408,9 @@ async def run_manual_test():
         except Exception as e:
             print(f"   ❌ FAILED: Wrong error type: {e}")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("🎉 MANUAL TEST COMPLETED")
-        print("="*60)
+        print("=" * 60)
 
         # Restore original URL
         api_module.API_BASE_URL = original_url
