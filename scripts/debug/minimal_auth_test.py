@@ -4,7 +4,9 @@
 import asyncio
 import json
 import sys
+
 from aiohttp import ClientSession, ClientTimeout
+
 
 async def test_minimal_auth(username: str, password: str):
     """Minimal test to see exact API behavior."""
@@ -53,6 +55,7 @@ async def test_minimal_auth(username: str, password: str):
 
     finally:
         await session.close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

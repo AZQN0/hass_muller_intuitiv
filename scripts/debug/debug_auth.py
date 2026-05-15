@@ -5,6 +5,7 @@ import asyncio
 import json
 import sys
 import urllib.parse
+
 from aiohttp import ClientSession, ClientTimeout
 
 API_BASE_URL = "https://app.muller-intuitiv.net"
@@ -12,6 +13,7 @@ CLIENT_ID = "59e604948fe283fd4dc7e355"
 CLIENT_SECRET = "rAeWu8Y3YqXEPqRJ4BpFzFG98MRXpCcz"
 USER_PREFIX = "muller"
 SCOPE = "read_muller write_muller"
+
 
 async def debug_auth(username: str, password: str):
     """Debug authentication with detailed logging."""
@@ -68,9 +70,9 @@ async def debug_auth(username: str, password: str):
                     print(f"✅ SUCCESS with username format: {test_username}")
                     return True
                 elif response.status == 400:
-                    error_data = json.loads(response_text) if response_text.startswith('{') else {}
-                    error = error_data.get('error', 'unknown')
-                    error_desc = error_data.get('error_description', 'No description')
+                    error_data = json.loads(response_text) if response_text.startswith("{") else {}
+                    error = error_data.get("error", "unknown")
+                    error_desc = error_data.get("error_description", "No description")
                     print(f"❌ FAILED: {error} - {error_desc}")
                 else:
                     print(f"❌ FAILED: HTTP {response.status}")
@@ -80,6 +82,7 @@ async def debug_auth(username: str, password: str):
 
     finally:
         await session.close()
+
 
 async def test_endpoint_variations():
     """Test different API endpoints that might work."""
@@ -108,6 +111,7 @@ async def test_endpoint_variations():
 
     await session.close()
 
+
 def main():
     if len(sys.argv) != 3:
         print("Usage: python3 debug_auth.py username password")
@@ -121,6 +125,7 @@ def main():
 
     asyncio.run(debug_auth(username, password))
     asyncio.run(test_endpoint_variations())
+
 
 if __name__ == "__main__":
     main()

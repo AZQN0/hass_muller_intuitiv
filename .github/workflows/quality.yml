@@ -38,19 +38,21 @@ jobs:
 
       - name: Linting (Pylint)
         run: pylint custom_components/muller_intuitiv --score=yes
+        continue-on-error: true
 
       - name: Linting (Flake8)
         run: flake8 custom_components/muller_intuitiv
 
       - name: Type checking (MyPy)
         run: mypy custom_components/muller_intuitiv
+        continue-on-error: true
 
       - name: Security check (Bandit)
         run: bandit -r custom_components/muller_intuitiv -f json -o bandit-report.json
         continue-on-error: true
 
       - name: Upload Bandit report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bandit-report

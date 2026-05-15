@@ -7,6 +7,9 @@ jeedom_reference/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
 .coverage
+coverage.xml
 htmlcov/
+.venv/
 .venv-ha2026/

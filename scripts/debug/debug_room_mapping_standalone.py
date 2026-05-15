@@ -2,11 +2,12 @@
 """Standalone debug script to analyze room mapping issue."""
 
 import asyncio
-import sys
 import json
-import aiohttp
-import time
 import logging
+import sys
+import time
+
+import aiohttp
 
 # Constants from const.py
 API_BASE_URL = "https://app.muller-intuitiv.net"
@@ -17,8 +18,9 @@ SCOPE = "read_write"
 HTTP_TIMEOUT = 30
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 _LOGGER = logging.getLogger(__name__)
+
 
 class MullerIntuitivApiStandalone:
     """Standalone API Client for Muller Intuitiv."""
@@ -75,12 +77,11 @@ class MullerIntuitivApiStandalone:
             raise Exception("No access token available")
 
         url = f"{API_BASE_URL}{endpoint}"
-        headers = {
-            "Authorization": f"Bearer {self._token}",
-            "Accept": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self._token}", "Accept": "application/json"}
 
-        async with self._session.post(url, headers=headers, json=json_data, timeout=self._timeout) as response:
+        async with self._session.post(
+            url, headers=headers, json=json_data, timeout=self._timeout
+        ) as response:
             if response.status != 200:
                 error_text = await response.text()
                 print(f"❌ API error {response.status}: {error_text}")
@@ -99,7 +100,9 @@ class MullerIntuitivApiStandalone:
             raise Exception("No homes found in account")
 
         home_data = homes[0]
-        print(f"✅ Home data fetched successfully: ID={home_data.get('id')}, Name={home_data.get('name', 'Unknown')}, Rooms={len(home_data.get('rooms', []))}")
+        print(
+            f"✅ Home data fetched successfully: ID={home_data.get('id')}, Name={home_data.get('name', 'Unknown')}, Rooms={len(home_data.get('rooms', []))}"
+        )
         return home_data
 
     async def get_home_status(self, home_id: str) -> list:
@@ -111,6 +114,7 @@ class MullerIntuitivApiStandalone:
         print(f"✅ Home status fetched successfully: {len(rooms)} devices found")
 
         return rooms
+
 
 async def debug_room_mapping(username: str, password: str):
     """Debug the room mapping issue."""
@@ -150,7 +154,9 @@ async def debug_room_mapping(username: str, password: str):
                 for j, module in enumerate(modules):
                     module_id = module.get("id")
                     module_type = module.get("type", "Unknown")
-                    print(f"      Module {j+1}: ID={module_id} (type: {type(module_id)}), Type={module_type}")
+                    print(
+                        f"      Module {j+1}: ID={module_id} (type: {type(module_id)}), Type={module_type}"
+                    )
 
                     if module_id:
                         device_to_room_map[module_id] = room_id
@@ -215,7 +221,9 @@ async def debug_room_mapping(username: str, password: str):
                         try:
                             int_mapped_id = int(mapped_id)
                             if int_device_id and int_device_id == int_mapped_id:
-                                print(f"    ⚠️  INTEGER EXACT MATCH: {int_mapped_id} == {int_device_id}")
+                                print(
+                                    f"    ⚠️  INTEGER EXACT MATCH: {int_mapped_id} == {int_device_id}"
+                                )
                         except (ValueError, TypeError):
                             pass
 
@@ -233,11 +241,15 @@ async def debug_room_mapping(username: str, password: str):
                 print(f"\n🔍 DATA TYPE ANALYSIS:")
                 if device_to_room_map:
                     first_mapped_id = list(device_to_room_map.keys())[0]
-                    print(f"   Home structure ID type: {type(first_mapped_id)} = {repr(first_mapped_id)}")
+                    print(
+                        f"   Home structure ID type: {type(first_mapped_id)} = {repr(first_mapped_id)}"
+                    )
 
                 if devices_data:
-                    first_device_id = devices_data[0].get('id')
-                    print(f"   Device status ID type: {type(first_device_id)} = {repr(first_device_id)}")
+                    first_device_id = devices_data[0].get("id")
+                    print(
+                        f"   Device status ID type: {type(first_device_id)} = {repr(first_device_id)}"
+                    )
 
                 # Try to fix mapping by converting types
                 print(f"\n🔧 ATTEMPTING TYPE CONVERSIONS:")
@@ -247,7 +259,9 @@ async def debug_room_mapping(username: str, password: str):
                 for device_id in mapping_failures:
                     str_device_id = str(device_id)
                     if str_device_id in string_map:
-                        print(f"   ✅ FOUND WITH STRING CONVERSION: {device_id} -> {string_map[str_device_id]}")
+                        print(
+                            f"   ✅ FOUND WITH STRING CONVERSION: {device_id} -> {string_map[str_device_id]}"
+                        )
 
                 # Convert all mapping keys to integers
                 int_map = {}
@@ -262,7 +276,9 @@ async def debug_room_mapping(username: str, password: str):
                     try:
                         int_device_id = int(device_id)
                         if int_device_id in int_map:
-                            print(f"   ✅ FOUND WITH INT CONVERSION: {device_id} -> {int_map[int_device_id]}")
+                            print(
+                                f"   ✅ FOUND WITH INT CONVERSION: {device_id} -> {int_map[int_device_id]}"
+                            )
                     except (ValueError, TypeError):
                         pass
 
@@ -279,7 +295,9 @@ async def debug_room_mapping(username: str, password: str):
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

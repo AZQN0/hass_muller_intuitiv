@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-05-15
+
+### Fixed
+- Restore GitHub Actions compatibility by updating artifact upload to v4.
+- Install a Python 3.11/3.12-compatible Home Assistant test dependency in CI.
+- Make the test frame helper compatible with the pinned Home Assistant version.
+- Align Black, isort, and flake8 configuration so quality checks run on project code consistently.
+
 ## [0.11.2] - 2026-05-15
 
 ### Changed

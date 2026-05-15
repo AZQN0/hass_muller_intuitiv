@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Standalone test for DeviceManager without Home Assistant dependencies."""
 
-import sys
 import os
+import sys
 
 sys.path.insert(
     0,
@@ -11,7 +11,7 @@ sys.path.insert(
     ),
 )
 
-from device_manager import DeviceManager, DeviceState, DeviceChange
+from device_manager import DeviceChange, DeviceManager, DeviceState
 
 
 def test_device_manager_initialization():

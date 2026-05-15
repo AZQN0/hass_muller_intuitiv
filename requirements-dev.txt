@@ -15,10 +15,7 @@ isort>=5.12.0
 bandit>=1.7.0
 
 # Home Assistant testing
-# Home Assistant 2026.5.1 requires Python >=3.14.2.
-# The third-party pytest-homeassistant-custom-component package currently pins
-# Home Assistant 2024.3.3, so do not install it with this target stack.
-homeassistant==2026.5.1; python_full_version >= "3.14.2"
+homeassistant==2024.3.3
 
 # HTTP mocking for integration tests
 responses>=0.23.0

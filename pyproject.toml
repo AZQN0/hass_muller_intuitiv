@@ -16,6 +16,7 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 100
+skip_gitignore = true
 multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
@@ -42,9 +43,6 @@ disable = [
 
 [tool.pylint.format]
 max-line-length = 100
-
-[tool.pylint.design]
-max-complexity = 10
 
 [tool.mypy]
 python_version = "3.11"

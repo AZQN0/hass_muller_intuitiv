@@ -2,11 +2,11 @@
 """Debug script to test API data flow"""
 
 import asyncio
-import aiohttp
-import sys
 import json
-
 import os
+import sys
+
+import aiohttp
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 

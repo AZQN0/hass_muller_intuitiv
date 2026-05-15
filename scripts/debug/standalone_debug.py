@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Standalone debug script to test API data flow"""
+
 import asyncio
-import aiohttp
-import sys
 import json
+import sys
 import time
+
+import aiohttp
 
 # Constants from the integration (CORRECTED)
 API_BASE_URL = "https://app.muller-intuitiv.net"
@@ -14,11 +16,14 @@ SCOPE = "read_muller write_muller"
 USER_PREFIX = "muller"
 HTTP_TIMEOUT = 30
 
+
 class MullerIntuitivAuthError(Exception):
     """Exception for authentication errors."""
 
+
 class MullerIntuitivApiError(Exception):
     """Exception for general API errors."""
+
 
 async def debug_api():
     """Debug API data retrieval"""
@@ -68,10 +73,7 @@ async def debug_api():
             print()
 
             # Headers for authenticated requests
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Accept": "application/json"
-            }
+            headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
 
             print("2. Getting homes data...")
             url = f"{API_BASE_URL}/api/homesdata"
@@ -100,7 +102,9 @@ async def debug_api():
             url = f"{API_BASE_URL}/syncapi/v1/homestatus"
             payload = {"home_id": home_id}
 
-            async with session.post(url, headers=headers, json=payload, timeout=timeout) as response:
+            async with session.post(
+                url, headers=headers, json=payload, timeout=timeout
+            ) as response:
                 if response.status != 200:
                     error_text = await response.text()
                     print(f"❌ Home status request failed (status {response.status}): {error_text}")
@@ -121,12 +125,24 @@ async def debug_api():
                         print(f"     📋 Full JSON: {json.dumps(room, indent=8, default=str)}")
                         print()
                         print(f"     🔑 Key Analysis:")
-                        print(f"        - ID: {room.get('id')} ({'✅' if room.get('id') else '❌'})")
-                        print(f"        - Name: {room.get('name', 'Unknown')} ({'✅' if room.get('name') else '❌'})")
-                        print(f"        - Current temp: {room.get('therm_measured_temperature')}°C ({'✅' if room.get('therm_measured_temperature') is not None else '❌'})")
-                        print(f"        - Target temp: {room.get('therm_setpoint_temperature')}°C ({'✅' if room.get('therm_setpoint_temperature') is not None else '❌'})")
-                        print(f"        - Mode: {room.get('therm_setpoint_mode')} ({'✅' if room.get('therm_setpoint_mode') else '❌'})")
-                        print(f"        - Open window: {room.get('open_window')} ({'✅' if 'open_window' in room else '❌'})")
+                        print(
+                            f"        - ID: {room.get('id')} ({'✅' if room.get('id') else '❌'})"
+                        )
+                        print(
+                            f"        - Name: {room.get('name', 'Unknown')} ({'✅' if room.get('name') else '❌'})"
+                        )
+                        print(
+                            f"        - Current temp: {room.get('therm_measured_temperature')}°C ({'✅' if room.get('therm_measured_temperature') is not None else '❌'})"
+                        )
+                        print(
+                            f"        - Target temp: {room.get('therm_setpoint_temperature')}°C ({'✅' if room.get('therm_setpoint_temperature') is not None else '❌'})"
+                        )
+                        print(
+                            f"        - Mode: {room.get('therm_setpoint_mode')} ({'✅' if room.get('therm_setpoint_mode') else '❌'})"
+                        )
+                        print(
+                            f"        - Open window: {room.get('open_window')} ({'✅' if 'open_window' in room else '❌'})"
+                        )
                         print()
                         print(f"     📊 All available keys ({len(room.keys())} total):")
                         for key in sorted(room.keys()):
@@ -134,17 +150,20 @@ async def debug_api():
                             value_type = type(value).__name__
                             print(f"        - {key}: {value} ({value_type})")
                         print()
-                        print("     " + "="*60)
+                        print("     " + "=" * 60)
                         print()
 
                     print("5. Integration compatibility check:")
                     required_keys = [
-                        'id', 'name', 'therm_measured_temperature',
-                        'therm_setpoint_temperature', 'therm_setpoint_mode'
+                        "id",
+                        "name",
+                        "therm_measured_temperature",
+                        "therm_setpoint_temperature",
+                        "therm_setpoint_mode",
                     ]
 
                     for room in rooms_data:
-                        room_name = room.get('name', f"Room {room.get('id', '?')}")
+                        room_name = room.get("name", f"Room {room.get('id', '?')}")
                         print(f"  🏠 {room_name}:")
                         all_good = True
                         for key in required_keys:
@@ -154,7 +173,9 @@ async def debug_api():
                             if not has_key:
                                 all_good = False
 
-                        print(f"  🎯 Room compatibility: {'✅ GOOD' if all_good else '❌ ISSUES FOUND'}")
+                        print(
+                            f"  🎯 Room compatibility: {'✅ GOOD' if all_good else '❌ ISSUES FOUND'}"
+                        )
                         print()
 
                 else:
@@ -164,7 +185,9 @@ async def debug_api():
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_api())

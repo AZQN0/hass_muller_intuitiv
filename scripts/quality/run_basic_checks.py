@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Basic quality checks for Muller Intuitiv integration."""
 
-import sys
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

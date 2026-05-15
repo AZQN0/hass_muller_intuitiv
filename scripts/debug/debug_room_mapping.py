@@ -2,10 +2,13 @@
 """Debug script to analyze room mapping issue."""
 
 import asyncio
-import sys
 import json
+import sys
+
 import aiohttp
+
 from custom_components.muller_intuitiv.api import MullerIntuitivApi
+
 
 async def debug_room_mapping(username: str, password: str):
     """Debug the room mapping issue."""
@@ -124,11 +127,15 @@ async def debug_room_mapping(username: str, password: str):
                 print(f"\n🔍 DATA TYPE ANALYSIS:")
                 if device_to_room_map:
                     first_mapped_id = list(device_to_room_map.keys())[0]
-                    print(f"   Home structure ID type: {type(first_mapped_id)} ({repr(first_mapped_id)})")
+                    print(
+                        f"   Home structure ID type: {type(first_mapped_id)} ({repr(first_mapped_id)})"
+                    )
 
                 if devices_data:
-                    first_device_id = devices_data[0].get('id')
-                    print(f"   Device status ID type: {type(first_device_id)} ({repr(first_device_id)})")
+                    first_device_id = devices_data[0].get("id")
+                    print(
+                        f"   Device status ID type: {type(first_device_id)} ({repr(first_device_id)})"
+                    )
 
                 # Raw data dump for analysis
                 print(f"\n📄 RAW DATA DUMP:")
@@ -140,7 +147,9 @@ async def debug_room_mapping(username: str, password: str):
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

@@ -17,11 +17,17 @@ if importlib.util.find_spec("pytest_homeassistant_custom_component") is not None
 @pytest.fixture(autouse=True)
 def setup_homeassistant_frame_helper():
     """Initialize Home Assistant's frame helper for mock-based tests."""
+    from homeassistant import core
     from homeassistant.helpers import frame
 
     hass = Mock()
     hass.data = {}
     hass.loop_thread_id = threading.get_ident()
-    frame.async_setup(hass)
+    if hasattr(frame, "async_setup"):
+        frame.async_setup(hass)
+    else:
+        core._hass.hass = hass
     yield
-    frame._hass.hass = None
+    if hasattr(frame, "_hass"):
+        frame._hass.hass = None
+    core._hass.hass = None
