@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-05-15
+
+### Fixed
+- Keep Codecov upload issues from failing otherwise successful test matrix jobs.
+
 ## [0.11.3] - 2026-05-15
 
 ### Fixed

@@ -93,9 +93,10 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
+        continue-on-error: true
         with:
           file: ./coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: false
 
   validate-manifest:
     name: Validate Home Assistant Integration
