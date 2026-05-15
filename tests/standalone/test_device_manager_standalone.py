@@ -3,9 +3,16 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'custom_components/muller_intuitiv'))
+
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "custom_components", "muller_intuitiv")
+    ),
+)
 
 from device_manager import DeviceManager, DeviceState, DeviceChange
+
 
 def test_device_manager_initialization():
     """Test DeviceManager initialization."""
@@ -15,17 +22,12 @@ def test_device_manager_initialization():
     assert manager._change_callbacks == []
     print("✓ DeviceManager initialization test passed")
 
+
 def test_device_addition():
     """Test adding a device."""
     manager = DeviceManager()
 
-    devices = {
-        "device1": {
-            "id": "device1",
-            "name": "Test Device",
-            "muller_type": "FPN"
-        }
-    }
+    devices = {"device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}}
 
     changes = manager.update_devices(devices)
 
@@ -34,18 +36,13 @@ def test_device_addition():
     assert changes[0].device_id == "device1"
     print("✓ Device addition test passed")
 
+
 def test_device_removal():
     """Test removing a device."""
     manager = DeviceManager()
 
     # Add device first
-    devices = {
-        "device1": {
-            "id": "device1",
-            "name": "Test Device",
-            "muller_type": "FPN"
-        }
-    }
+    devices = {"device1": {"id": "device1", "name": "Test Device", "muller_type": "FPN"}}
     manager.update_devices(devices)
 
     # Remove device
@@ -57,17 +54,14 @@ def test_device_removal():
     assert changes[0].device_id == "device1"
     print("✓ Device removal test passed")
 
+
 def test_device_modification():
     """Test modifying a device."""
     manager = DeviceManager()
 
     # Initial device
     devices = {
-        "device1": {
-            "id": "device1",
-            "name": "Test Device",
-            "therm_measured_temperature": 20.0
-        }
+        "device1": {"id": "device1", "name": "Test Device", "therm_measured_temperature": 20.0}
     }
     manager.update_devices(devices)
 
@@ -76,7 +70,7 @@ def test_device_modification():
         "device1": {
             "id": "device1",
             "name": "Test Device",
-            "therm_measured_temperature": 22.0  # Changed
+            "therm_measured_temperature": 22.0,  # Changed
         }
     }
     changes = manager.update_devices(modified_devices)
@@ -85,6 +79,7 @@ def test_device_modification():
     assert changes[0].change_type == "modified"
     assert changes[0].device_id == "device1"
     print("✓ Device modification test passed")
+
 
 def test_device_availability():
     """Test device availability tracking."""
@@ -100,6 +95,7 @@ def test_device_availability():
     assert manager.get_device_state(device_id) == DeviceState.UNAVAILABLE
     print("✓ Device availability test passed")
 
+
 def test_callback_system():
     """Test callback system."""
     manager = DeviceManager()
@@ -111,17 +107,13 @@ def test_callback_system():
     manager.register_change_callback(test_callback)
 
     # Add device to trigger callback
-    devices = {
-        "device1": {
-            "id": "device1",
-            "name": "Callback Test Device"
-        }
-    }
+    devices = {"device1": {"id": "device1", "name": "Callback Test Device"}}
     manager.update_devices(devices)
 
     assert len(callback_called) == 1
     assert callback_called[0].change_type == "added"
     print("✓ Callback system test passed")
+
 
 def test_statistics():
     """Test statistics generation."""
@@ -140,6 +132,7 @@ def test_statistics():
     stats = manager.get_statistics()
     assert stats["total_devices"] == 1
     print("✓ Statistics test passed")
+
 
 if __name__ == "__main__":
     print("🧪 Running DeviceManager standalone tests...")

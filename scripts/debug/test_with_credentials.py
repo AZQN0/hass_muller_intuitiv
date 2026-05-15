@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 
 # Add the project to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.test_real_api import RealApiTester
+
 
 async def test_with_credentials(username: str, password: str):
     """Test authentication with provided credentials."""
@@ -21,6 +22,7 @@ async def test_with_credentials(username: str, password: str):
         success = tester.print_summary(results)
 
     return success
+
 
 def main():
     """Main function to run the test."""
@@ -55,6 +57,7 @@ def main():
     except Exception as e:
         print(f"\n💥 Unexpected error: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = main()

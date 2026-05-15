@@ -63,7 +63,7 @@ Configuration qualité:             # 🆕 Outils de développement
 ├── pyproject.toml
 ├── pytest.ini
 ├── requirements-dev.txt
-├── TESTING.md
+├── docs/TESTING.md
 └── scripts/test_ha_core.py
 ```
 

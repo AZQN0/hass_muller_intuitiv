@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Quality check script for Muller Intuitiv integration."""
 
-import os
 import sys
 import subprocess
 from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def run_command(command, description):
@@ -14,11 +15,7 @@ def run_command(command, description):
 
     try:
         result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            cwd=Path(__file__).parent
+            command, shell=True, capture_output=True, text=True, cwd=PROJECT_ROOT
         )
 
         if result.returncode == 0:
@@ -48,31 +45,24 @@ def main():
         # Code compilation
         (
             "find custom_components/muller_intuitiv -name '*.py' -exec python3 -m py_compile {} \\;",
-            "Python Code Compilation"
+            "Python Code Compilation",
         ),
-
         # DeviceManager standalone tests
-        (
-            "python test_device_manager_standalone.py",
-            "DeviceManager Unit Tests"
-        ),
-
+        ("python tests/standalone/test_device_manager_standalone.py", "DeviceManager Unit Tests"),
         # Code formatting (dry run)
         (
             "python -m black --check --diff custom_components/muller_intuitiv",
-            "Code Formatting Check (Black)"
+            "Code Formatting Check (Black)",
         ),
-
         # Basic syntax check with pylint (if available)
         (
             "python -m flake8 custom_components/muller_intuitiv --count --select=E9,F63,F7,F82 --show-source --statistics",
-            "Critical Syntax Issues (Flake8)"
+            "Critical Syntax Issues (Flake8)",
         ),
-
         # Manifest validation
         (
             "python -c \"import json; print('✓ Manifest is valid JSON:', json.load(open('custom_components/muller_intuitiv/manifest.json')))\"",
-            "Manifest JSON Validation"
+            "Manifest JSON Validation",
         ),
     ]
 

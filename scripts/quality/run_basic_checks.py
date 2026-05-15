@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 """Basic quality checks for Muller Intuitiv integration."""
 
-import os
 import sys
 import json
 import subprocess
 from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def check_python_syntax():
     """Check Python syntax of all modules."""
     print("🔍 Checking Python syntax...")
 
-    python_files = list(Path("custom_components/muller_intuitiv").glob("*.py"))
+    python_files = list((PROJECT_ROOT / "custom_components/muller_intuitiv").glob("*.py"))
 
     for file_path in python_files:
         try:
-            result = subprocess.run([sys.executable, "-m", "py_compile", str(file_path)],
-                                  capture_output=True, text=True)
+            result = subprocess.run(
+                [sys.executable, "-m", "py_compile", str(file_path)], capture_output=True, text=True
+            )
             if result.returncode != 0:
                 print(f"❌ Syntax error in {file_path}")
                 print(result.stderr)
@@ -36,10 +38,11 @@ def check_imports():
 
     # Test import of main modules without HA dependencies
     try:
-        sys.path.insert(0, "custom_components/muller_intuitiv")
+        sys.path.insert(0, str(PROJECT_ROOT / "custom_components/muller_intuitiv"))
 
         # Import DeviceManager (standalone)
         from device_manager import DeviceManager
+
         print("✅ DeviceManager imports successfully")
 
         # Test basic functionality
@@ -64,10 +67,10 @@ def check_manifest():
     print("\n🔍 Checking manifest.json...")
 
     try:
-        with open("custom_components/muller_intuitiv/manifest.json") as f:
+        with open(PROJECT_ROOT / "custom_components/muller_intuitiv/manifest.json") as f:
             manifest = json.load(f)
 
-        required_fields = ['domain', 'name', 'version', 'documentation', 'issue_tracker']
+        required_fields = ["domain", "name", "version", "documentation", "issue_tracker"]
         missing = [field for field in required_fields if field not in manifest]
 
         if missing:
@@ -90,8 +93,12 @@ def check_device_manager_tests():
     print("\n🔍 Running DeviceManager tests...")
 
     try:
-        result = subprocess.run([sys.executable, "test_device_manager_standalone.py"],
-                              capture_output=True, text=True)
+        result = subprocess.run(
+            [sys.executable, "tests/standalone/test_device_manager_standalone.py"],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
 
         if result.returncode == 0:
             print("✅ DeviceManager tests passed")
@@ -123,7 +130,7 @@ def check_code_structure():
 
     missing_files = []
     for file_path in required_files:
-        if not Path(file_path).exists():
+        if not (PROJECT_ROOT / file_path).exists():
             missing_files.append(file_path)
 
     if missing_files:
@@ -142,11 +149,12 @@ def check_documentation():
     missing_docs = []
 
     for doc_file in doc_files:
-        if not Path(doc_file).exists():
+        doc_path = PROJECT_ROOT / doc_file
+        if not doc_path.exists():
             missing_docs.append(doc_file)
         else:
             # Check if file is not empty
-            if Path(doc_file).stat().st_size < 100:  # Less than 100 bytes
+            if doc_path.stat().st_size < 100:  # Less than 100 bytes
                 print(f"⚠️  {doc_file} exists but seems very small")
 
     if missing_docs:

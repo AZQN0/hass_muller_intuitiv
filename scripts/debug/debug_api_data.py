@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 """Debug script to test API data flow"""
+
 import asyncio
 import aiohttp
 import sys
 import json
 
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'custom_components', 'muller_intuitiv'))
 
-# Import manually to avoid relative import issues
-from api import MullerIntuitivApi
-from const import API_BASE_URL, CLIENT_ID, CLIENT_SECRET, HTTP_TIMEOUT, SCOPE, USER_PREFIX
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+from custom_components.muller_intuitiv.api import MullerIntuitivApi
+from custom_components.muller_intuitiv.const import (
+    API_BASE_URL,
+    CLIENT_ID,
+    CLIENT_SECRET,
+    HTTP_TIMEOUT,
+    SCOPE,
+    USER_PREFIX,
+)
+
 
 async def debug_api():
     """Debug API data retrieval"""
@@ -67,7 +76,9 @@ async def debug_api():
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_api())

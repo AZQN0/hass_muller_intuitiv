@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Target Home Assistant `2026.5.1` for the development and release test workflow.
 - Add a reproducible Home Assistant Core checkout test helper for component tests.
 - Align pytest tooling with the Home Assistant Core `2026.5.1` test stack.
-- Document the new test layout and Core fixture workflow in `TESTING.md`.
+- Document the new test layout and Core fixture workflow in `docs/TESTING.md`.
 
 ### Fixed
 - Harden device change callback logging for callable objects without `__name__`.

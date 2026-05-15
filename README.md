@@ -305,7 +305,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Development
 
 This integration targets Home Assistant `2026.5.1`. Use Python `3.14.2+` for
-local validation and see [TESTING.md](TESTING.md) for the full workflow.
+local validation and see [TESTING.md](docs/TESTING.md) for the full workflow.
 
 Fast offline tests live under `tests/unit/` and `tests/integration/`. Home
 Assistant Core fixture tests live under `tests/components/muller_intuitiv/` and
