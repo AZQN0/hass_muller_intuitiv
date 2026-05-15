@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-05-15
+
+### Changed
+- Target Home Assistant `2026.5.1` for the development and release test workflow.
+- Add a reproducible Home Assistant Core checkout test helper for component tests.
+- Align pytest tooling with the Home Assistant Core `2026.5.1` test stack.
+- Document the new test layout and Core fixture workflow in `TESTING.md`.
+
+### Fixed
+- Harden device change callback logging for callable objects without `__name__`.
+- Keep real cloud API checks opt-in with the `real_api` marker.
+- Clean up security scan noise with narrow Bandit suppressions for known public constants.
+
+### Removed
+- Remove the obsolete standalone enhanced-feature script that required credentials on the command line.
+
 ## [0.11.0] - 2026-05-13 🚀 Complete Feature Expansion - All API Data Exploited
 
 ### ✨ MAJOR FEATURE RELEASE
