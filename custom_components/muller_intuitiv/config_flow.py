@@ -4,19 +4,27 @@ from typing import Any, Dict, Optional
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.const import CONF_USERNAME, CONF_PASSWORD
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN, CONF_HOME_ID, CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, CONF_EXPIRES_IN, CONF_EXPIRES_AT
 from .api import (
     MullerIntuitivApi,
-    MullerIntuitivAuthError,
     MullerIntuitivApiError,
-    MullerIntuitivTimeoutError,
+    MullerIntuitivAuthError,
     MullerIntuitivConnectionError,
+    MullerIntuitivTimeoutError,
+)
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_EXPIRES_AT,
+    CONF_EXPIRES_IN,
+    CONF_HOME_ID,
+    CONF_REFRESH_TOKEN,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class MullerIntuitivConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Muller Intuitiv."""
@@ -34,7 +42,7 @@ class MullerIntuitivConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 # Attempt login
                 tokens = await api.login(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
-                
+
                 # Fetch homes data to get the home_id
                 home_data = await api.get_homes_data()
                 home_id = home_data.get("id")
@@ -50,7 +58,6 @@ class MullerIntuitivConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title=home_name,
                         data={
                             CONF_USERNAME: user_input[CONF_USERNAME],
-                            CONF_PASSWORD: user_input[CONF_PASSWORD],
                             CONF_HOME_ID: home_id,
                             CONF_ACCESS_TOKEN: tokens.get("access_token"),
                             CONF_REFRESH_TOKEN: tokens.get("refresh_token"),
@@ -76,6 +83,4 @@ class MullerIntuitivConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
-        return self.async_show_form(
-            step_id="user", data_schema=data_schema, errors=errors
-        )
+        return self.async_show_form(step_id="user", data_schema=data_schema, errors=errors)

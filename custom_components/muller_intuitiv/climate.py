@@ -1,8 +1,7 @@
 """Climate platform for Muller Intuitiv."""
+from datetime import datetime
 import logging
-from typing import Any, Dict, Optional, Union
-
-_LOGGER = logging.getLogger(__name__)
+from typing import Any, Dict, Optional
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -14,13 +13,13 @@ from homeassistant.components.climate.const import (
     PRESET_HOME,
     PRESET_NONE,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_HOME_ID
+from .const import CONF_HOME_ID, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,15 +36,17 @@ HA_TO_MULLER_PRESET = {
     PRESET_ECO: "hg",
 }
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up the Muller Intuitiv climate platform."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
-    for device_id, device_data in coordinator.data.items():
+    for device_id in coordinator.data:
         entities.append(MullerIntuitivClimate(coordinator, device_id, entry.data[CONF_HOME_ID]))
 
     async_add_entities(entities)
+
 
 class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
     """Representation of a Muller Intuitiv Room."""
@@ -74,7 +75,6 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
 
         # Get enhanced device information
         room_name = device_data.get("room_name")
-        room_type = device_data.get("room_type")
         has_temp_sensor = device_data.get("therm_measured_temperature") is not None
 
         # Create enhanced device name
@@ -99,7 +99,9 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         # Add firmware info if available
         firmware_info = device_data.get("firmware_info")
         if firmware_info:
-            self._attr_device_info["sw_version"] = f"Rev {firmware_info.get('firmware_revision', 'Unknown')}"
+            self._attr_device_info[
+                "sw_version"
+            ] = f"Rev {firmware_info.get('firmware_revision', 'Unknown')}"
 
     @property
     def _device_data(self) -> Dict[str, Any]:
@@ -130,8 +132,12 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         available = device_exists and device_available
 
         if not available:
-            _LOGGER.debug("Device %s availability: exists=%s, available=%s",
-                         self.device_id, device_exists, device_available)
+            _LOGGER.debug(
+                "Device %s availability: exists=%s, available=%s",
+                self.device_id,
+                device_exists,
+                device_available,
+            )
 
         return available
 
@@ -181,9 +187,8 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         if "therm_setpoint_end_time" in data and data["therm_setpoint_end_time"]:
             end_time = data["therm_setpoint_end_time"]
             if end_time and end_time != 2147483647:  # Not permanent
-                import datetime
                 try:
-                    end_dt = datetime.datetime.fromtimestamp(end_time)
+                    end_dt = datetime.fromtimestamp(end_time)
                     attrs["setpoint_expires_at"] = end_dt.strftime("%Y-%m-%d %H:%M:%S")
                 except (ValueError, OSError):
                     attrs["setpoint_expires_at"] = "Invalid time"
@@ -191,19 +196,20 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
                 attrs["setpoint_expires_at"] = "Permanent"
 
         # Advanced status attributes
-        attrs.update({
-            "anticipating": data.get("anticipating", False),
-            "lowering": data.get("lowering", False),
-            "pairing_status": data.get("pairing"),
-        })
+        attrs.update(
+            {
+                "anticipating": data.get("anticipating", False),
+                "lowering": data.get("lowering", False),
+                "pairing_status": data.get("pairing"),
+            }
+        )
 
         # System connectivity (if available)
         if "reachable" in data:
             attrs["reachable"] = data["reachable"]
         if "last_seen" in data:
-            import datetime
             try:
-                last_seen_dt = datetime.datetime.fromtimestamp(data["last_seen"])
+                last_seen_dt = datetime.fromtimestamp(data["last_seen"])
                 attrs["last_seen"] = last_seen_dt.strftime("%Y-%m-%d %H:%M:%S")
             except (ValueError, OSError):
                 attrs["last_seen"] = "Unknown"
@@ -220,11 +226,20 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         # Get the room_id from the device data (mapped in coordinator)
         room_id = self._device_data.get("room_id")
         if not room_id:
-            _LOGGER.error("No room_id found for device %s. Device data: %s", self.device_id, self._device_data)
+            _LOGGER.error(
+                "No room_id found for device %s. Device data: %s",
+                self.device_id,
+                self._device_data,
+            )
             return
 
-        _LOGGER.info("Climate entity %s requesting temperature change to %.1f°C (device_id=%s, room_id=%s)",
-                    self.name, temperature, self.device_id, room_id)
+        _LOGGER.info(
+            "Climate entity %s requesting temperature change to %.1f°C (device_id=%s, room_id=%s)",
+            self.name,
+            temperature,
+            self.device_id,
+            room_id,
+        )
 
         try:
             await self.coordinator.api.set_room_temperature(
@@ -248,11 +263,22 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
         # Get the room_id from the device data (mapped in coordinator)
         room_id = self._device_data.get("room_id")
         if not room_id:
-            _LOGGER.error("No room_id found for device %s. Device data: %s", self.device_id, self._device_data)
+            _LOGGER.error(
+                "No room_id found for device %s. Device data: %s",
+                self.device_id,
+                self._device_data,
+            )
             return
 
-        _LOGGER.info("Climate entity %s requesting preset mode change to '%s' -> '%s' (device_id=%s, room_id=%s)",
-                    self.name, preset_mode, muller_mode, self.device_id, room_id)
+        _LOGGER.info(
+            "Climate entity %s requesting preset mode change to '%s' -> '%s' "
+            "(device_id=%s, room_id=%s)",
+            self.name,
+            preset_mode,
+            muller_mode,
+            self.device_id,
+            room_id,
+        )
 
         try:
             if muller_mode == "home":
@@ -263,12 +289,18 @@ class MullerIntuitivClimate(CoordinatorEntity, ClimateEntity):
                 # Just set the current temperature to stay in manual mode
                 current_target = self.target_temperature
                 if current_target is not None:
-                    _LOGGER.debug("Setting manual mode by maintaining current temperature %.1f°C", current_target)
+                    _LOGGER.debug(
+                        "Setting manual mode by maintaining current temperature %.1f°C",
+                        current_target,
+                    )
                     await self.coordinator.api.set_room_temperature(
                         self.home_id, room_id, current_target
                     )
                 else:
-                    _LOGGER.warning("Cannot set manual mode for %s: no current target temperature", self.name)
+                    _LOGGER.warning(
+                        "Cannot set manual mode for %s: no current target temperature",
+                        self.name,
+                    )
                     return
 
             _LOGGER.info("Preset mode change completed for %s", self.name)

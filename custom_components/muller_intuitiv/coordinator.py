@@ -16,7 +16,15 @@ from .exceptions import (
     MullerIntuitivTimeoutError,
     MullerIntuitivConnectionError,
 )
-from .const import DOMAIN, CONF_HOME_ID, CONF_EXPIRES_AT, DEFAULT_UPDATE_INTERVAL
+from .const import (
+    CONF_ACCESS_TOKEN,
+    CONF_EXPIRES_AT,
+    CONF_EXPIRES_IN,
+    CONF_HOME_ID,
+    CONF_REFRESH_TOKEN,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -115,26 +123,8 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
             # Refresh token if it expires within 5 minutes
             if current_time >= (expires_at - 300):
                 _LOGGER.info("Token expired or expiring soon, attempting to refresh...")
-                refresh_token = self.entry.data.get("refresh_token")
-                if not refresh_token:
-                    raise UpdateFailed(
-                        "No refresh token available - please reconfigure integration"
-                    )
-
                 try:
-                    new_tokens = await self.api.refresh_token(refresh_token)
-
-                    # Update config entry with new tokens
-                    new_data = {**self.entry.data}
-                    new_data["access_token"] = new_tokens.get("access_token")
-                    new_data["refresh_token"] = new_tokens.get("refresh_token")
-                    new_data["expires_in"] = new_tokens.get("expires_in")
-                    new_data[CONF_EXPIRES_AT] = new_tokens.get("expires_at")
-                    self.hass.config_entries.async_update_entry(self.entry, data=new_data)
-
-                    # Update API client with new token
-                    self.api.set_token(new_data["access_token"])
-
+                    await self._async_refresh_access_token()
                 except MullerIntuitivAuthError as err:
                     if "expired" in str(err).lower() or "invalid" in str(err).lower():
                         _LOGGER.error(
@@ -147,285 +137,13 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
                         raise UpdateFailed(f"Token refresh failed: {err}") from err
 
             try:
-                _LOGGER.info("Starting data update for home %s", self.home_id)
-
-                # Get home structure to map devices to room IDs
-                _LOGGER.debug("Fetching home structure data...")
-                home_data = await self.api.get_homes_data()
-                rooms_from_home = home_data.get("rooms", [])
-
-                _LOGGER.info("Home data received: %d rooms found", len(rooms_from_home))
-
-                # Log home structure for debugging
-                for i, room in enumerate(rooms_from_home):
-                    room_id = room.get("id")
-                    room_name = room.get("name", "Unknown")
-                    modules = room.get("modules", [])
-                    _LOGGER.debug(
-                        "Room %d: ID=%s, Name=%s, Modules=%d", i, room_id, room_name, len(modules)
-                    )
-
-                    for j, module in enumerate(modules):
-                        # Handle both string IDs and dictionary structures
-                        if isinstance(module, str):
-                            module_id = module
-                            module_type = "Unknown"
-                        else:
-                            module_id = module.get("id")
-                            module_type = module.get("type", "Unknown")
-                        _LOGGER.debug("  Module %d: ID=%s, Type=%s", j, module_id, module_type)
-
-                device_to_room_map, rooms_by_id, rooms_by_name = _build_room_context(
-                    rooms_from_home
-                )
-                _LOGGER.info(
-                    "Device-to-room mapping completed: %d total mappings (including type variations)",
-                    len(device_to_room_map),
-                )
-                _LOGGER.debug("All mapping keys: %s", list(device_to_room_map.keys()))
-
-                # Get device status (what API calls "rooms" are actually heating devices)
-                _LOGGER.debug("Fetching device status data...")
-                try:
-                    devices_data = await self.api.get_home_status(self.home_id)
-                except MullerIntuitivApiError as err:
-                    if "Invalid home_id" in str(err):
-                        _LOGGER.warning(
-                            "Home ID %s is invalid, refreshing home data...", self.home_id
-                        )
-                        # Refresh home_id from the current home data
-                        fresh_home_data = await self.api.get_homes_data()
-                        new_home_id = fresh_home_data.get("id")
-                        if new_home_id and new_home_id != self.home_id:
-                            _LOGGER.info("Updated home_id from %s to %s", self.home_id, new_home_id)
-                            self.home_id = new_home_id
-                            # Update config entry with new home_id
-                            self.hass.config_entries.async_update_entry(
-                                self.entry, data={**self.entry.data, "home_id": new_home_id}
-                            )
-                            # Retry with new home_id
-                            devices_data = await self.api.get_home_status(self.home_id)
-                        else:
-                            _LOGGER.error("Could not refresh home_id, no valid home found")
-                            raise
-                    else:
-                        raise
-
-                _LOGGER.info("Device status received: %d devices found", len(devices_data))
-
-                # Get system information (temperature extérieure, WiFi, firmware)
-                try:
-                    system_info = await self.api.get_home_system_info(self.home_id)
-                    _LOGGER.info(
-                        "System info retrieved: outdoor_temp=%s°C, wifi=%s%%, modules=%d",
-                        system_info.get("outdoor_temperature"),
-                        system_info.get("wifi_strength"),
-                        len(system_info.get("modules", [])),
-                    )
-                except Exception as err:
-                    _LOGGER.warning("Could not retrieve system info: %s", err)
-                    system_info = {
-                        "outdoor_temperature": None,
-                        "wifi_strength": None,
-                        "firmware_info": {},
-                        "modules": [],
-                    }
-
-                # Log all device data for debugging
-                for i, device in enumerate(devices_data):
-                    device_id = device.get("id")
-                    device_name = device.get("name", "Unknown")
-                    muller_type = device.get("muller_type", "Unknown")
-                    has_temp_sensor = device.get("therm_measured_temperature") is not None
-                    current_temp = device.get("therm_measured_temperature")
-                    target_temp = device.get("therm_setpoint_temperature")
-                    mode = device.get("therm_setpoint_mode")
-
-                    _LOGGER.debug(
-                        "Device %d: ID=%s, Name=%s, Type=%s, HasTempSensor=%s",
-                        i,
-                        device_id,
-                        device_name,
-                        muller_type,
-                        has_temp_sensor,
-                    )
-                    _LOGGER.debug(
-                        "  Temperatures: Current=%s, Target=%s, Mode=%s",
-                        current_temp,
-                        target_temp,
-                        mode,
-                    )
-
-                # Process each heating device and add room mapping
-                successfully_mapped = 0
-                failed_mappings = 0
-
-                for device in devices_data:
-                    device_id = device.get("id")
-                    muller_type = device.get("muller_type", "Unknown")
-
-                    # Add the correct room ID for API calls
-                    room = _find_room_for_device(device, rooms_by_id, rooms_by_name)
-                    room_id = (
-                        device_to_room_map.get(device_id)
-                        or device.get("room_id")
-                        or (room.get("id") if room else None)
-                    )
-                    if room_id:
-                        device["room_id"] = room_id
-                        successfully_mapped += 1
-                        _LOGGER.debug(
-                            "✓ Device %s successfully mapped to room %s", device_id, room_id
-                        )
-                    else:
-                        device["room_id"] = None
-                        failed_mappings += 1
-                        _LOGGER.debug("Could not find room mapping for device %s", device_id)
-                        _LOGGER.debug(
-                            "Available device IDs in mapping: %s", list(device_to_room_map.keys())
-                        )
-
-                    # Find room name and type from home structure
-                    room_name = device.get("room_name")
-                    room_type = device.get("room_type")
-                    if room:
-                        room_name = room.get("name", room_name or "Unknown")
-                        room_type = room.get("type", room_type or "unknown")
-                        _LOGGER.debug(
-                            "Found room info for device %s: name=%s, type=%s",
-                            device_id,
-                            room_name,
-                            room_type,
-                        )
-
-                    # Store room information in device data
-                    device["room_name"] = room_name
-                    device["room_type"] = room_type
-
-                    # Create user-friendly names using room names
-                    short_id = device_id[-4:] if device_id else "XXXX"
-
-                    if room_name:
-                        # Use room name as primary identifier
-                        if device.get("therm_measured_temperature") is not None:
-                            device_name = room_name  # Simple room name for thermostat
-                        else:
-                            device_name = f"{room_name} (Heater)"  # Distinguish heater-only devices
-                    else:
-                        # Fallback to device type naming
-                        if device.get("therm_measured_temperature") is not None:
-                            device_name = f"{muller_type} Thermostat {short_id}"
-                        else:
-                            device_name = f"{muller_type} Heater {short_id}"
-
-                    device["name"] = device_name
-                    _LOGGER.info(
-                        "Device %s assigned name: '%s' (room: %s, type: %s)",
-                        device_id,
-                        device_name,
-                        room_name or "Unknown",
-                        room_type or "unknown",
-                    )
-
-                # Add system information to a special device entry for global sensors
-                if system_info:
-                    system_device = {
-                        "id": "_system",
-                        "name": "Muller System",
-                        "muller_type": "System",
-                        "room_id": None,
-                        "room_name": "System",
-                        "room_type": "system",
-                        "outdoor_temperature": system_info.get("outdoor_temperature"),
-                        "wifi_strength": system_info.get("wifi_strength"),
-                        "firmware_info": system_info.get("firmware_info", {}),
-                        "modules": system_info.get("modules", []),
-                        "is_system_device": True,
-                    }
-                    devices_data.append(system_device)
-                    _LOGGER.info(
-                        "Added system device with outdoor_temp=%s°C, wifi=%s%%",
-                        system_info.get("outdoor_temperature"),
-                        system_info.get("wifi_strength"),
-                    )
-
-                _LOGGER.info(
-                    "Mapping summary: %d successful, %d failed out of %d total devices",
-                    successfully_mapped,
-                    failed_mappings,
-                    len(devices_data) - (1 if system_info else 0),
-                )
-
+                devices_data = await self._async_fetch_devices_data()
             except MullerIntuitivAuthError:
                 # If we still get auth error after checking expiration, try refresh once more
                 _LOGGER.info("Authentication failed, attempting emergency token refresh...")
-                refresh_token = self.entry.data.get("refresh_token")
-                if not refresh_token:
-                    raise UpdateFailed(
-                        "No refresh token available - please reconfigure integration"
-                    )
-
                 try:
-                    new_tokens = await self.api.refresh_token(refresh_token)
-
-                    # Update config entry with new tokens
-                    new_data = {**self.entry.data}
-                    new_data["access_token"] = new_tokens.get("access_token")
-                    new_data["refresh_token"] = new_tokens.get("refresh_token")
-                    new_data["expires_in"] = new_tokens.get("expires_in")
-                    new_data[CONF_EXPIRES_AT] = new_tokens.get("expires_at")
-                    self.hass.config_entries.async_update_entry(self.entry, data=new_data)
-
-                    # Update API client with new token
-                    self.api.set_token(new_data["access_token"])
-
-                    # Retry fetch with device processing
-                    # Get home structure to map devices to room IDs
-                    home_data = await self.api.get_homes_data()
-                    rooms_from_home = home_data.get("rooms", [])
-
-                    device_to_room_map, rooms_by_id, rooms_by_name = _build_room_context(
-                        rooms_from_home
-                    )
-
-                    devices_data = await self.api.get_home_status(self.home_id)
-
-                    # Process each heating device and add room mapping
-                    for device in devices_data:
-                        device_id = device.get("id")
-                        muller_type = device.get("muller_type", "Unknown")
-
-                        # Add the correct room ID for API calls
-                        room = _find_room_for_device(device, rooms_by_id, rooms_by_name)
-                        room_id = (
-                            device_to_room_map.get(device_id)
-                            or device.get("room_id")
-                            or (room.get("id") if room else None)
-                        )
-                        if room_id:
-                            device["room_id"] = room_id
-                            _LOGGER.debug("Device %s belongs to room %s", device_id, room_id)
-                        else:
-                            _LOGGER.debug("Could not find room mapping for device %s", device_id)
-                            device["room_id"] = None
-
-                        if room:
-                            device["room_name"] = room.get("name", device.get("room_name"))
-                            device["room_type"] = room.get("type", device.get("room_type"))
-
-                        # Create user-friendly names
-                        short_id = device_id[-4:] if device_id else "XXXX"
-
-                        # Different naming based on device features
-                        if device.get("therm_measured_temperature") is not None:
-                            # Device with temperature sensor
-                            device_name = f"{muller_type} Thermostat {short_id}"
-                        else:
-                            # Device without temperature sensor (relay/actuator only)
-                            device_name = f"{muller_type} Heater {short_id}"
-
-                        device["name"] = device_name
-
+                    await self._async_refresh_access_token()
+                    devices_data = await self._async_fetch_devices_data()
                 except MullerIntuitivAuthError as err:
                     if "expired" in str(err).lower() or "invalid" in str(err).lower():
                         _LOGGER.error("Emergency token refresh failed - tokens expired: %s", err)
@@ -456,6 +174,218 @@ class MullerIntuitivDataUpdateCoordinator(DataUpdateCoordinator):
         ) as err:
             _LOGGER.error("API communication error: %s", err)
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+
+    async def _async_refresh_access_token(self) -> None:
+        """Refresh tokens and persist the updated config entry data."""
+        refresh_token = self.entry.data.get(CONF_REFRESH_TOKEN)
+        if not refresh_token:
+            raise UpdateFailed("No refresh token available - please reconfigure integration")
+
+        new_tokens = await self.api.refresh_token(refresh_token)
+        access_token = new_tokens.get("access_token")
+        if not access_token:
+            raise UpdateFailed("Token refresh response did not include an access token")
+
+        new_data = {**self.entry.data}
+        new_data[CONF_ACCESS_TOKEN] = access_token
+        new_data[CONF_REFRESH_TOKEN] = new_tokens.get(CONF_REFRESH_TOKEN, refresh_token)
+        if CONF_EXPIRES_IN in new_tokens:
+            new_data[CONF_EXPIRES_IN] = new_tokens[CONF_EXPIRES_IN]
+        if CONF_EXPIRES_AT in new_tokens:
+            new_data[CONF_EXPIRES_AT] = new_tokens[CONF_EXPIRES_AT]
+        self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+        self.api.set_token(access_token)
+
+    async def _async_fetch_devices_data(self) -> List[dict]:
+        """Fetch and enrich the device data used by Home Assistant entities."""
+        _LOGGER.info("Starting data update for home %s", self.home_id)
+
+        home_data = await self.api.get_homes_data()
+        rooms_from_home = home_data.get("rooms", [])
+        self._log_home_structure(rooms_from_home)
+
+        devices_data = await self._async_get_home_status()
+        _LOGGER.info("Device status received: %d devices found", len(devices_data))
+
+        system_info = await self._async_get_system_info()
+        self._enrich_devices(devices_data, rooms_from_home, system_info)
+        return devices_data
+
+    async def _async_get_home_status(self) -> List[dict]:
+        """Fetch home status, refreshing a stale stored home id once when needed."""
+        try:
+            return await self.api.get_home_status(self.home_id)
+        except MullerIntuitivApiError as err:
+            if "Invalid home_id" not in str(err):
+                raise
+
+            _LOGGER.warning("Home ID %s is invalid, refreshing home data...", self.home_id)
+            fresh_home_data = await self.api.get_homes_data()
+            new_home_id = fresh_home_data.get("id")
+            if not new_home_id or new_home_id == self.home_id:
+                _LOGGER.error("Could not refresh home_id, no valid home found")
+                raise
+
+            _LOGGER.info("Updated home_id from %s to %s", self.home_id, new_home_id)
+            self.home_id = new_home_id
+            self.hass.config_entries.async_update_entry(
+                self.entry, data={**self.entry.data, CONF_HOME_ID: new_home_id}
+            )
+            return await self.api.get_home_status(self.home_id)
+
+    async def _async_get_system_info(self) -> dict:
+        """Fetch optional system sensor data without failing the main update."""
+        try:
+            system_info = await self.api.get_home_system_info(self.home_id)
+            _LOGGER.info(
+                "System info retrieved: outdoor_temp=%s°C, wifi=%s%%, modules=%d",
+                system_info.get("outdoor_temperature"),
+                system_info.get("wifi_strength"),
+                len(system_info.get("modules", [])),
+            )
+            return system_info
+        except (
+            MullerIntuitivApiError,
+            MullerIntuitivTimeoutError,
+            MullerIntuitivConnectionError,
+        ) as err:
+            _LOGGER.warning("Could not retrieve system info: %s", err)
+            return {
+                "outdoor_temperature": None,
+                "wifi_strength": None,
+                "firmware_info": {},
+                "modules": [],
+            }
+
+    def _log_home_structure(self, rooms_from_home: List[dict]) -> None:
+        """Log home structure details at debug level."""
+        _LOGGER.info("Home data received: %d rooms found", len(rooms_from_home))
+        for i, room in enumerate(rooms_from_home):
+            room_id = room.get("id")
+            room_name = room.get("name", "Unknown")
+            modules = room.get("modules", [])
+            _LOGGER.debug(
+                "Room %d: ID=%s, Name=%s, Modules=%d", i, room_id, room_name, len(modules)
+            )
+
+            for j, module in enumerate(modules):
+                if isinstance(module, str):
+                    module_id = module
+                    module_type = "Unknown"
+                else:
+                    module_id = module.get("id")
+                    module_type = module.get("type", "Unknown")
+                _LOGGER.debug("  Module %d: ID=%s, Type=%s", j, module_id, module_type)
+
+    def _enrich_devices(
+        self,
+        devices_data: List[dict],
+        rooms_from_home: List[dict],
+        system_info: dict,
+    ) -> None:
+        """Add room mapping, display names, and system data to device payloads."""
+        device_to_room_map, rooms_by_id, rooms_by_name = _build_room_context(rooms_from_home)
+        _LOGGER.info(
+            "Device-to-room mapping completed: %d total mappings (including type variations)",
+            len(device_to_room_map),
+        )
+        _LOGGER.debug("All mapping keys: %s", list(device_to_room_map.keys()))
+
+        successfully_mapped = 0
+        failed_mappings = 0
+
+        for i, device in enumerate(devices_data):
+            device_id = device.get("id")
+            self._log_device_status(i, device)
+
+            room = _find_room_for_device(device, rooms_by_id, rooms_by_name)
+            room_id = (
+                device_to_room_map.get(device_id)
+                or device.get("room_id")
+                or (room.get("id") if room else None)
+            )
+            if room_id:
+                device["room_id"] = room_id
+                successfully_mapped += 1
+                _LOGGER.debug("Device %s successfully mapped to room %s", device_id, room_id)
+            else:
+                device["room_id"] = None
+                failed_mappings += 1
+                _LOGGER.debug("Could not find room mapping for device %s", device_id)
+
+            room_name = device.get("room_name")
+            room_type = device.get("room_type")
+            if room:
+                room_name = room.get("name", room_name or "Unknown")
+                room_type = room.get("type", room_type or "unknown")
+
+            device["room_name"] = room_name
+            device["room_type"] = room_type
+            device["name"] = self._device_name(device, room_name)
+
+        if system_info:
+            devices_data.append(self._system_device(system_info))
+            _LOGGER.info(
+                "Added system device with outdoor_temp=%s°C, wifi=%s%%",
+                system_info.get("outdoor_temperature"),
+                system_info.get("wifi_strength"),
+            )
+
+        _LOGGER.info(
+            "Mapping summary: %d successful, %d failed out of %d total devices",
+            successfully_mapped,
+            failed_mappings,
+            len(devices_data) - (1 if system_info else 0),
+        )
+
+    def _log_device_status(self, index: int, device: dict) -> None:
+        """Log device status details at debug level."""
+        _LOGGER.debug(
+            "Device %d: ID=%s, Name=%s, Type=%s, HasTempSensor=%s",
+            index,
+            device.get("id"),
+            device.get("name", "Unknown"),
+            device.get("muller_type", "Unknown"),
+            device.get("therm_measured_temperature") is not None,
+        )
+        _LOGGER.debug(
+            "  Temperatures: Current=%s, Target=%s, Mode=%s",
+            device.get("therm_measured_temperature"),
+            device.get("therm_setpoint_temperature"),
+            device.get("therm_setpoint_mode"),
+        )
+
+    @staticmethod
+    def _device_name(device: dict, room_name: str | None) -> str:
+        """Return the Home Assistant-facing device name."""
+        if room_name:
+            if device.get("therm_measured_temperature") is not None:
+                return room_name
+            return f"{room_name} (Heater)"
+
+        device_id = device.get("id")
+        short_id = device_id[-4:] if device_id else "XXXX"
+        muller_type = device.get("muller_type", "Unknown")
+        if device.get("therm_measured_temperature") is not None:
+            return f"{muller_type} Thermostat {short_id}"
+        return f"{muller_type} Heater {short_id}"
+
+    @staticmethod
+    def _system_device(system_info: dict) -> dict:
+        """Return the synthetic system device used by global sensors."""
+        return {
+            "id": "_system",
+            "name": "Muller System",
+            "muller_type": "System",
+            "room_id": None,
+            "room_name": "System",
+            "room_type": "system",
+            "outdoor_temperature": system_info.get("outdoor_temperature"),
+            "wifi_strength": system_info.get("wifi_strength"),
+            "firmware_info": system_info.get("firmware_info", {}),
+            "modules": system_info.get("modules", []),
+            "is_system_device": True,
+        }
 
     def _handle_device_changes(self, changes: List[DeviceChange]) -> None:
         """Handle device changes from DeviceManager."""

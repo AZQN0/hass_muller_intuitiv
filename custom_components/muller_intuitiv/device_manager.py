@@ -1,10 +1,10 @@
 """Device lifecycle management for Muller Intuitiv integration."""
 from __future__ import annotations
 
-import logging
-from typing import Dict, Set, List, Optional, Callable, Any
 from dataclasses import dataclass
 from enum import Enum
+import logging
+from typing import Any, Callable, Dict, List, Optional
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -23,17 +23,3 @@ CONF_EXPIRES_AT = "expires_at"
 DEFAULT_UPDATE_INTERVAL = 60  # seconds
 DEFAULT_MANUAL_DURATION = 120  # minutes
 HTTP_TIMEOUT = 30  # seconds
-
-# Device types
-DEVICE_TYPE_THERMOSTAT = "thermostat"
-DEVICE_TYPE_HEATER = "heater"
-
-# Supported features
-SUPPORTED_MULLER_MODES = ["manual", "home", "hg"]
-SUPPORTED_HVAC_MODES = ["heat", "off"]
-
-# API endpoints
-ENDPOINT_TOKEN = "/oauth2/token"
-ENDPOINT_HOMES = "/muller/v1/homes"
-ENDPOINT_HOME_STATUS = "/muller/v1/homes/{home_id}/rooms"
-ENDPOINT_ROOM_CONTROL = "/muller/v1/homes/{home_id}/rooms/{room_id}/control"
