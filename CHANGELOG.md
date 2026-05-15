@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-05-15
+
+### Changed
+- Move project documentation into `docs/`.
+- Move debug, quality, and standalone test helpers into dedicated script and test folders.
+- Update helper scripts for their new repository paths.
+
+### Removed
+- Remove the unused Node package lockfile.
+
 ## [0.11.1] - 2026-05-15
 
 ### Changed
