@@ -1,6 +1,6 @@
 """Sensor platform for Muller Intuitiv."""
+
 import logging
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import (
@@ -35,23 +35,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         # Skip system device for room-specific sensors
         if device_data.get("is_system_device"):
             # Create system-wide sensors for the system device
-            entities.extend([
-                MullerOutdoorTemperatureSensor(coordinator, device_id, entry.data[CONF_HOME_ID]),
-                MullerWifiStrengthSensor(coordinator, device_id, entry.data[CONF_HOME_ID]),
-            ])
+            entities.extend(
+                [
+                    MullerOutdoorTemperatureSensor(
+                        coordinator, device_id, entry.data[CONF_HOME_ID]
+                    ),
+                    MullerWifiStrengthSensor(coordinator, device_id, entry.data[CONF_HOME_ID]),
+                ]
+            )
         else:
-            # Create per-room sensors
-            room_name = device_data.get("room_name", f"Device {device_id}")
-
-            # Only create presence and window sensors for devices with these capabilities
-            if "presence" in device_data:
-                entities.append(MullerPresenceSensor(coordinator, device_id, entry.data[CONF_HOME_ID]))
-
-            if "open_window" in device_data:
-                entities.append(MullerWindowSensor(coordinator, device_id, entry.data[CONF_HOME_ID]))
-
+            # Create per-room status sensors. Boolean sensors live in binary_sensor.py.
             if "boost_status" in device_data:
-                entities.append(MullerBoostStatusSensor(coordinator, device_id, entry.data[CONF_HOME_ID]))
+                entities.append(
+                    MullerBoostStatusSensor(coordinator, device_id, entry.data[CONF_HOME_ID])
+                )
 
     async_add_entities(entities)
 
@@ -73,82 +70,9 @@ class MullerSensorBase(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if device is available."""
-        return (
-            self.device_id in self.coordinator.data
-            and self.coordinator.is_device_available(self.device_id)
+        return self.device_id in self.coordinator.data and self.coordinator.is_device_available(
+            self.device_id
         )
-
-
-class MullerPresenceSensor(MullerSensorBase):
-    """Presence sensor for room."""
-
-    def __init__(self, coordinator, device_id: str, home_id: str) -> None:
-        """Initialize the presence sensor."""
-        super().__init__(coordinator, device_id, home_id)
-
-        device_data = self._device_data
-        room_name = device_data.get("room_name", f"Device {device_id}")
-
-        self._attr_device_class = SensorDeviceClass.OCCUPANCY
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_name = f"{room_name} Presence"
-        self._attr_unique_id = f"muller_intuitiv_presence_{device_id}"
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"device_{device_id}")},
-            name=room_name,
-            manufacturer="Muller",
-            model="Intuitiv Presence Sensor",
-            via_device=(DOMAIN, f"home_{home_id}"),
-        )
-
-    @property
-    def native_value(self) -> Optional[str]:
-        """Return the state of the sensor."""
-        presence = self._device_data.get("presence", False)
-        return "detected" if presence else "not_detected"
-
-    @property
-    def icon(self) -> str:
-        """Return the icon for the sensor."""
-        presence = self._device_data.get("presence", False)
-        return "mdi:account" if presence else "mdi:account-outline"
-
-
-class MullerWindowSensor(MullerSensorBase):
-    """Window sensor for room."""
-
-    def __init__(self, coordinator, device_id: str, home_id: str) -> None:
-        """Initialize the window sensor."""
-        super().__init__(coordinator, device_id, home_id)
-
-        device_data = self._device_data
-        room_name = device_data.get("room_name", f"Device {device_id}")
-
-        self._attr_device_class = SensorDeviceClass.OPENING
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_name = f"{room_name} Window"
-        self._attr_unique_id = f"muller_intuitiv_window_{device_id}"
-
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"device_{device_id}")},
-            name=room_name,
-            manufacturer="Muller",
-            model="Intuitiv Window Sensor",
-            via_device=(DOMAIN, f"home_{home_id}"),
-        )
-
-    @property
-    def native_value(self) -> Optional[str]:
-        """Return the state of the sensor."""
-        open_window = self._device_data.get("open_window", False)
-        return "open" if open_window else "closed"
-
-    @property
-    def icon(self) -> str:
-        """Return the icon for the sensor."""
-        open_window = self._device_data.get("open_window", False)
-        return "mdi:window-open" if open_window else "mdi:window-closed"
 
 
 class MullerBoostStatusSensor(MullerSensorBase):

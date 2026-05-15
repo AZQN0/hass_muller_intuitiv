@@ -1,4 +1,5 @@
 """Unit tests for coordinator device lifecycle management."""
+
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from homeassistant.helpers.update_coordinator import UpdateFailed
@@ -24,6 +25,7 @@ def mock_api():
     api = Mock(spec=MullerIntuitivApi)
     api.get_homes_data = AsyncMock()
     api.get_home_status = AsyncMock()
+    api.get_home_system_info = AsyncMock(return_value={})
     api.refresh_token = AsyncMock()
     return api
 
@@ -37,7 +39,7 @@ def mock_entry():
         "access_token": "test_token",
         "refresh_token": "test_refresh_token",
         "expires_in": 3600,
-        "expires_at": 9999999999  # Far future
+        "expires_at": 9999999999,  # Far future
     }
     return entry
 
@@ -62,9 +64,9 @@ class TestCoordinatorLifecycle:
                 {
                     "id": "room1",
                     "name": "Living Room",
-                    "modules": [{"id": "device1", "type": "FPN"}]
+                    "modules": [{"id": "device1", "type": "FPN"}],
                 }
-            ]
+            ],
         }
 
         mock_api.get_home_status.return_value = [
@@ -74,7 +76,7 @@ class TestCoordinatorLifecycle:
                 "muller_type": "FPN",
                 "therm_measured_temperature": 20.0,
                 "therm_setpoint_temperature": 21.0,
-                "therm_setpoint_mode": "manual"
+                "therm_setpoint_mode": "manual",
             }
         ]
 
@@ -91,9 +93,7 @@ class TestCoordinatorLifecycle:
         # Setup initial state
         mock_api.get_homes_data.return_value = {
             "id": "test_home_id",
-            "rooms": [
-                {"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}
-            ]
+            "rooms": [{"id": "room1", "modules": [{"id": "device1", "type": "FPN"}]}],
         }
 
         mock_api.get_home_status.return_value = [
@@ -104,12 +104,12 @@ class TestCoordinatorLifecycle:
         await coordinator._async_update_data()
 
         # Mock device manager to return changes
-        with patch.object(coordinator.device_manager, 'update_devices') as mock_update:
+        with patch.object(coordinator.device_manager, "update_devices") as mock_update:
             mock_update.return_value = [
                 DeviceChange(
                     device_id="device2",
                     change_type="added",
-                    new_data={"id": "device2", "name": "New Device"}
+                    new_data={"id": "device2", "name": "New Device"},
                 )
             ]
 
@@ -125,7 +125,7 @@ class TestCoordinatorLifecycle:
         device_id = "test_device"
 
         # Mock device manager
-        with patch.object(coordinator.device_manager, 'is_device_available') as mock_available:
+        with patch.object(coordinator.device_manager, "is_device_available") as mock_available:
             mock_available.return_value = True
 
             assert coordinator.is_device_available(device_id) is True
@@ -136,10 +136,10 @@ class TestCoordinatorLifecycle:
         expected_stats = {
             "total_devices": 2,
             "device_states": {"available": 2},
-            "registered_callbacks": 1
+            "registered_callbacks": 1,
         }
 
-        with patch.object(coordinator.device_manager, 'get_statistics') as mock_stats:
+        with patch.object(coordinator.device_manager, "get_statistics") as mock_stats:
             mock_stats.return_value = expected_stats
 
             stats = coordinator.get_device_statistics()
@@ -162,7 +162,7 @@ class TestCoordinatorLifecycle:
             DeviceChange(
                 device_id="new_device",
                 change_type="added",
-                new_data={"id": "new_device", "name": "New Device"}
+                new_data={"id": "new_device", "name": "New Device"},
             )
         ]
 
@@ -176,11 +176,11 @@ class TestCoordinatorLifecycle:
             DeviceChange(
                 device_id="removed_device",
                 change_type="removed",
-                old_data={"id": "removed_device", "name": "Removed Device"}
+                old_data={"id": "removed_device", "name": "Removed Device"},
             )
         ]
 
-        with patch.object(coordinator.device_manager, 'mark_device_unavailable') as mock_mark:
+        with patch.object(coordinator.device_manager, "mark_device_unavailable") as mock_mark:
             coordinator._handle_device_changes(changes)
             mock_mark.assert_called_with("removed_device")
 
@@ -192,7 +192,7 @@ class TestCoordinatorLifecycle:
                 device_id="modified_device",
                 change_type="modified",
                 old_data={"id": "modified_device", "temperature": 20.0},
-                new_data={"id": "modified_device", "temperature": 22.0}
+                new_data={"id": "modified_device", "temperature": 22.0},
             )
         ]
 
@@ -203,21 +203,18 @@ class TestCoordinatorLifecycle:
     async def test_home_id_refresh_on_invalid_error(self, coordinator, mock_api, mock_hass):
         """Test automatic home_id refresh when invalid home_id error occurs."""
         # Setup mocks
-        mock_api.get_homes_data.return_value = {
-            "id": "test_home_id",
-            "rooms": []
-        }
+        mock_api.get_homes_data.return_value = {"id": "test_home_id", "rooms": []}
 
         # First call fails with invalid home_id
         mock_api.get_home_status.side_effect = [
             MullerIntuitivApiError("Invalid home_id"),
-            []  # Second call succeeds
+            [],  # Second call succeeds
         ]
 
         # Mock fresh home data with new ID
         fresh_home_data = {"id": "new_home_id"}
 
-        with patch.object(mock_api, 'get_homes_data', return_value=fresh_home_data):
+        with patch.object(mock_api, "get_homes_data", return_value=fresh_home_data):
             result = await coordinator._async_update_data()
 
             # Verify home_id was updated
@@ -244,17 +241,10 @@ class TestCoordinatorLifecycle:
                 {
                     "id": "room1",
                     "name": "Living Room",
-                    "modules": [
-                        {"id": "device1", "type": "FPN"},
-                        {"id": "device2", "type": "FPN"}
-                    ]
+                    "modules": [{"id": "device1", "type": "FPN"}, {"id": "device2", "type": "FPN"}],
                 },
-                {
-                    "id": "room2",
-                    "name": "Bedroom",
-                    "modules": [{"id": "device3", "type": "FPN"}]
-                }
-            ]
+                {"id": "room2", "name": "Bedroom", "modules": [{"id": "device3", "type": "FPN"}]},
+            ],
         }
 
         mock_api.get_home_status.return_value = [
@@ -262,19 +252,15 @@ class TestCoordinatorLifecycle:
                 "id": "device1",
                 "name": "Living Room Thermostat",
                 "muller_type": "FPN",
-                "therm_measured_temperature": 20.0
+                "therm_measured_temperature": 20.0,
             },
-            {
-                "id": "device2",
-                "name": "Living Room Heater",
-                "muller_type": "FPN"
-            },
+            {"id": "device2", "name": "Living Room Heater", "muller_type": "FPN"},
             {
                 "id": "device3",
                 "name": "Bedroom Thermostat",
                 "muller_type": "FPN",
-                "therm_measured_temperature": 18.0
-            }
+                "therm_measured_temperature": 18.0,
+            },
         ]
 
         result = await coordinator._async_update_data()
@@ -289,3 +275,61 @@ class TestCoordinatorLifecycle:
         assert result["device1"]["room_id"] == "room1"
         assert result["device2"]["room_id"] == "room1"
         assert result["device3"]["room_id"] == "room2"
+
+    @pytest.mark.asyncio
+    async def test_room_status_id_maps_to_room_id(self, coordinator, mock_api):
+        """Test API status entries keyed by room ID are usable for control calls."""
+        mock_api.get_homes_data.return_value = {
+            "id": "test_home_id",
+            "rooms": [
+                {
+                    "id": "3755235792",
+                    "name": "Chambre Quentin",
+                    "type": "bedroom",
+                    "modules": [],
+                }
+            ],
+        }
+        mock_api.get_home_status.return_value = [
+            {
+                "id": "3755235792",
+                "muller_type": "FPN",
+                "room_id": None,
+                "room_name": "Chambre Quentin",
+                "therm_measured_temperature": 18.9,
+            }
+        ]
+
+        result = await coordinator._async_update_data()
+
+        assert result["3755235792"]["room_id"] == "3755235792"
+        assert result["3755235792"]["room_name"] == "Chambre Quentin"
+        assert result["3755235792"]["room_type"] == "bedroom"
+
+    @pytest.mark.asyncio
+    async def test_room_name_fallback_maps_room_id(self, coordinator, mock_api):
+        """Test status entries can be matched by room name when module ids are absent."""
+        mock_api.get_homes_data.return_value = {
+            "id": "test_home_id",
+            "rooms": [
+                {
+                    "id": "room1",
+                    "name": "Chambre Quentin",
+                    "type": "bedroom",
+                    "modules": [],
+                }
+            ],
+        }
+        mock_api.get_home_status.return_value = [
+            {
+                "id": "device-without-module",
+                "muller_type": "FPN",
+                "room_id": None,
+                "room_name": "Chambre Quentin",
+                "therm_measured_temperature": 18.9,
+            }
+        ]
+
+        result = await coordinator._async_update_data()
+
+        assert result["device-without-module"]["room_id"] == "room1"
