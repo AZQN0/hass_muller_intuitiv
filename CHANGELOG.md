@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.5] - 2026-05-17
+
+### Fixed
+- Prevent Wi-Fi strength icon updates from failing when the Muller API returns
+  `wifi_strength: null`.
+- Remove the signal strength device class from the Wi-Fi percentage sensor to
+  match Home Assistant unit validation rules.
+
 ## [0.11.4] - 2026-05-15
 
 ### Fixed

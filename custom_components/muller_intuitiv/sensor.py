@@ -160,7 +160,6 @@ class MullerWifiStrengthSensor(MullerSensorBase):
         """Initialize the WiFi strength sensor."""
         super().__init__(coordinator, device_id, home_id)
 
-        self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
         self._attr_native_unit_of_measurement = PERCENTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -190,7 +189,10 @@ class MullerWifiStrengthSensor(MullerSensorBase):
     @property
     def icon(self) -> str:
         """Return the icon for the sensor."""
-        wifi_strength = self._device_data.get("wifi_strength", 0)
+        wifi_strength = self._device_data.get("wifi_strength")
+        if wifi_strength is None:
+            return "mdi:wifi-strength-off"
+
         if wifi_strength >= 75:
             return "mdi:wifi-strength-4"
         elif wifi_strength >= 50:
